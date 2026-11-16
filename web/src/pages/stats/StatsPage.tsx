@@ -185,7 +185,8 @@ export function StatsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { state, setFilters } = useListState();
-  const { defaultRange } = usePrefs();
+  const { defaultRange, hiddenTop } = usePrefs();
+  const hiddenCount = hiddenTop.senders.length + hiddenTop.recipients.length + hiddenTop.relays.length;
   const config = useSession().data?.config ?? {};
   const f = state.filters;
   const [bucketPref, setBucketPref] = useState<'auto' | 'hour' | 'day'>('auto');
@@ -339,7 +340,7 @@ export function StatsPage() {
           />
         </div>
       </div>
-      <div className="stats-foot">
+      <div className="stats-foot" hidden={!hiddenCount}>
         <Button variant="ghost" size="sm" icon={<RotateCcw size={13} />} onClick={() => setPrefs({ hiddenTop: { senders: [], recipients: [], relays: [] } })}>
           {t('stats.unhideAllLists')}
         </Button>

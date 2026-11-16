@@ -13,7 +13,10 @@ type Mode = { kind: 'create' } | { kind: 'password'; login: string } | { kind: '
 
 function errText(err: unknown, t: (k: string) => string, on409?: string): string {
   if (err instanceof ApiError) {
-    if (err.status === 409 && on409) return `${t(on409)}${err.message ? ` (${err.message})` : ''}`;
+    if (err.status === 409 && on409) {
+      const base = t(on409);
+      return err.message && err.message.toLowerCase() !== base.toLowerCase() ? `${base} (${err.message})` : base;
+    }
     return err.message || err.code;
   }
   return err instanceof Error ? err.message : String(err);

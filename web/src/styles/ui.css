@@ -64,6 +64,10 @@
   border-color: var(--danger);
   color: #fff;
 }
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger) 88%, black);
+  border-color: color-mix(in srgb, var(--danger) 88%, black);
+}
 :root[data-theme='dark'] .btn-danger {
   color: #1b0d0c;
 }

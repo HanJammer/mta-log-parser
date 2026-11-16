@@ -91,7 +91,14 @@ export function Timeline({ points, bucket }: { points: TimelinePoint[]; bucket: 
       <div className="timeline-x" style={{ left: `${(padL / W) * 100}%`, right: `${(8 / W) * 100}%` }}>
         {data.map((d, i) =>
           i % labelEvery === 0 ? (
-            <span key={d.t} style={{ left: `${((i + 0.5) / data.length) * 100}%` }}>
+            <span
+              key={d.t}
+              style={{
+                left: `${((i + 0.5) / data.length) * 100}%`,
+                // keep the outermost labels inside the panel
+                transform: (i + 0.5) / data.length > 0.93 ? 'translateX(-100%)' : (i + 0.5) / data.length < 0.05 ? 'none' : undefined,
+              }}
+            >
               {bucketLabel(d.t, bucket, utc, i18n.language)}
             </span>
           ) : null,

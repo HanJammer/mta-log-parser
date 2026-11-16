@@ -5,12 +5,11 @@
  * - a 401 outside the session/login endpoints notifies the app, which goes to the login screen
  */
 
-const PLACEHOLDER = '__MLP_' + 'PREFIX__'; // split so the backend's replace() never touches this file
-
 function readPrefix(): string {
   const meta = document.querySelector<HTMLMetaElement>('meta[name="mlp-prefix"]');
   let value = (meta?.content ?? '').trim();
-  if (value === PLACEHOLDER) value = '';
+  // unreplaced placeholder (Vite dev server, or index.html opened without the backend)
+  if (/^__[A-Z_]+__$/.test(value)) value = '';
   return value.replace(/\/+$/, '');
 }
 

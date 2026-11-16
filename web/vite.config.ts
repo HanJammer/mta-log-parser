@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 
 /**
@@ -11,9 +11,18 @@ export const PREFIX_PLACEHOLDER = '__MLP_PREFIX__';
 
 const backend = process.env.MLP_BACKEND ?? 'http://localhost:8487';
 
+/** Vite forces a leading "/" on `base`; drop it so `__MLP_PREFIX__` → '' or '/logs' yields valid URLs. */
+const prefixPlaceholder: Plugin = {
+  name: 'mlp-prefix-placeholder',
+  enforce: 'post',
+  transformIndexHtml(html) {
+    return html.split(`/${PREFIX_PLACEHOLDER}/`).join(`${PREFIX_PLACEHOLDER}/`);
+  },
+};
+
 export default defineConfig(({ command }) => ({
   base: command === 'build' ? `${PREFIX_PLACEHOLDER}/static/app/` : '/',
-  plugins: [react()],
+  plugins: [react(), prefixPlaceholder],
   server: {
     port: 5180,
     proxy: {
