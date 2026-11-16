@@ -69,7 +69,7 @@ the user to the login screen.
 | `GET /process_check` | every 15 s, every 3 s while `processing` is true |
 | `GET /stats?statuses=<code>` | one call per status code (sent, deferred, bounced, reject, multiple, unknown) — overall tiles, not filtered |
 | `GET /stats?by_host=1&<filters>` | per-server table; its sums also feed the status distribution |
-| `GET /stats?timeline=1&bucket=hour\|day&<filters>` | timeline |
+| `GET /stats?timeline=1&bucket=hour\|day&tz=+HH:MM&<filters>` | timeline (`tz` = browser offset, or `+00:00` when times are shown in UTC) |
 | `GET /stats?top_senders=1&<filters>` / `top_recipients=1` / `top_relays=1` | top lists (hiding entries is client-side) |
 | `GET /users`, `POST /users`, `PUT /users/<login> {password}`, `DELETE /users/<login>` | accounts page (local auth only) |
 
@@ -81,9 +81,21 @@ the user to the login screen.
   client cell sends `relay__eq=host[ip]:port` / `client__eq=host[ip]`.
 - `status.code__eq=sent,deferred` (status chips, OR), `host__eq=mx01,mx02` (server picker, OR)
 - `multiple__eq=true|false` (recipients picker)
-- `log_lines=…` (raw log search)
+- `log_lines=…` (raw log search). The API needs a lower time bound for it (`400 TIME_WINDOW_REQUIRED`):
+  when a log search would run with "All" or a custom range without a start, the UI switches to the last
+  24 hours and says so in a toast.
 - `timestamp__gt=<ISO 8601 UTC>` and optionally `timestamp__lt=…` — presets 1h/24h/7d/30d are
   resolved to absolute timestamps at request time; "All" sends no time bound.
+
+`order` is limited to the API whitelist (`timestamp`, `first_attempt`, `last_attempt`, `host`, `queue_id`,
+`mail_from`, `mail_to`, `subject`, `size`, `service`; `id` is accepted too): other columns have no sort button,
+and an unknown `order` in the URL falls back to `timestamp`. In-flight data requests are not aborted when
+the view changes (an aborted request can break the server's shared RethinkDB connection).
+
+Errors are shown in the current language by `error_code` (`src/lib/errors.ts`): `INVALID_CREDENTIALS`,
+`TOO_MANY_ATTEMPTS` (with the `Retry-After` wait), `ALREADY_SET_UP` (setup screen → login), `USER_EXISTS`,
+`LAST_ACCOUNT`, `LOCAL_AUTH_ONLY`, `CSRF_FAILED`, `INVALID_*` (with the server's detail), `TIME_WINDOW_REQUIRED`,
+`QUERY_TIMEOUT` (504), `DB_UNAVAILABLE` (503) and others.
 
 The page URL mirrors the same parameters (plus `range=1h|24h|7d|30d|all` for relative presets,
 `page`, `order`, `order_dir`, `msg`), so the address bar is always a shareable link. "Share" copies

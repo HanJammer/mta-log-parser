@@ -111,7 +111,7 @@ const ALLOWED = new Set([
   'relay', 'relay.host', 'relay.ip', 'client', 'client.host', 'client.ip', 'sasl_username', 'sasl_method',
   'service', 'dsn', 'dkim.domain', 'size', 'log_lines', 'multiple',
 ]);
-const CONTROL = new Set(['page', 'limit', 'order', 'order_dir', 'statuses', 'top_senders', 'top_recipients', 'top_relays', 'by_host', 'timeline', 'bucket']);
+const CONTROL = new Set(['page', 'limit', 'order', 'order_dir', 'statuses', 'top_senders', 'top_recipients', 'top_relays', 'by_host', 'timeline', 'bucket', 'tz']);
 
 function applyFilters(list: Email[], q: Query): Email[] | Response {
   let out = list;
@@ -126,10 +126,10 @@ function applyFilters(list: Email[], q: Query): Email[] | Response {
       });
       continue;
     }
-    const m = /^(.+?)(?:__(not|eq))?$/.exec(key)!;
+    const m = /^(.+?)(?:__(not|eq))?$/.exec(key === 'multiple' ? 'multiple__eq' : key)!;
     const field = m[1];
     const op = m[2] ?? 'contains';
-    if (!ALLOWED.has(field)) return err(400, 'BAD_FILTER', `Unknown filter field: ${field}`);
+    if (!ALLOWED.has(field)) return err(400, 'INVALID_FILTER', `Unknown filter '${field}'.`);
     if (op === 'eq' && (field === 'status.code' || field === 'host')) {
       const set = new Set(value.split(',').map((s) => s.trim().toLowerCase()));
       out = out.filter((e) => fieldValues(e, field).some((v) => set.has(v.toLowerCase())));
@@ -159,6 +159,7 @@ function topBy(list: Email[], key: (e: Email) => string[], exclude: string[] = [
 }
 
 const MAIN = ['sent', 'deferred', 'bounced', 'reject'] as const;
+const SORT_FIELDS = ['id', 'queue_id', 'host', 'timestamp', 'first_attempt', 'last_attempt', 'mail_from', 'mail_to', 'subject', 'size', 'service'];
 
 export async function handle(method: string, path: string, query: Query | undefined, body: unknown): Promise<Response> {
   await sleep(ls.get('mlp.mock.slow') === '1' ? 2000 : 120 + Math.random() * 180);
@@ -186,12 +187,12 @@ export async function handle(method: string, path: string, query: Query | undefi
     });
   }
   if (path === '/login' && method === 'POST') {
-    if (!b.login || !b.password || b.password === 'wrong') return err(401, 'BAD_CREDENTIALS', 'Wrong login or password');
+    if (!b.login || !b.password || b.password === 'wrong') return err(401, 'INVALID_CREDENTIALS', 'Wrong login or password');
     ls.set('mlp.mock.auth', b.login);
     return json(200, { login: b.login });
   }
   if (path === '/setup' && method === 'POST') {
-    if (users.length) return err(409, 'SETUP_DONE', 'An account already exists');
+    if (users.length) return err(409, 'ALREADY_SET_UP', 'An account already exists.');
     users = [b.login];
     ls.set('mlp.mock.setup', null);
     ls.set('mlp.mock.auth', b.login);
@@ -206,9 +207,9 @@ export async function handle(method: string, path: string, query: Query | undefi
   if (path === '/process_check') return json(200, { processing: ls.get('mlp.mock.processing') === '1' });
 
   if (path === '/users') {
-    if (ldap) return err(403, 'LDAP_MODE', 'Accounts are managed by LDAP');
+    if (ldap) return err(400, 'LOCAL_AUTH_ONLY', 'Accounts are managed by LDAP.');
     if (method === 'GET') return json(200, users.map((login) => ({ login })));
-    if (users.includes(b.login)) return err(409, 'USER_EXISTS', `Account ${b.login} already exists`);
+    if (users.includes(b.login)) return err(409, 'USER_EXISTS', 'An account with this login already exists.');
     users = [...users, b.login];
     return json(201, { login: b.login });
   }
@@ -239,6 +240,8 @@ export async function handle(method: string, path: string, query: Query | undefi
     return e ? json(200, e) : err(404, 'NOT_FOUND', `Message ${id} not found`);
   }
   if (path === '/emails') {
+    if (q.log_lines && !q.timestamp__gt && !q.timestamp__lt) return err(400, 'TIME_WINDOW_REQUIRED', 'The log_lines search needs a time window.');
+    if (q.order && !SORT_FIELDS.includes(String(q.order))) return err(400, 'INVALID_ORDER', `Cannot order by '${q.order}'.`);
     const filtered = applyFilters(all, q);
     if (filtered instanceof Response) return filtered;
     const order = String(q.order ?? 'last_attempt');

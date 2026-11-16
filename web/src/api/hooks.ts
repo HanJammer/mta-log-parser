@@ -49,7 +49,9 @@ export function emailsQuery(state: ListState, limit: number, now = Date.now()): 
 export function useEmails(state: ListState, limit: number, refreshSec: number, enabled: boolean) {
   return useQuery({
     queryKey: keys.emails({ f: state.filters, page: state.page, order: state.order, dir: state.dir, limit }),
-    queryFn: ({ signal }) => api.get<EmailList>('/emails', emailsQuery(state, limit), signal),
+    // No AbortSignal: cancelling an in-flight request makes the server drop the query mid-way,
+    // which can break its shared RethinkDB connection for concurrent requests.
+    queryFn: () => api.get<EmailList>('/emails', emailsQuery(state, limit)),
     placeholderData: keepPreviousData,
     refetchInterval: refreshSec > 0 ? refreshSec * 1000 : false,
     enabled,
@@ -60,7 +62,7 @@ export function useEmails(state: ListState, limit: number, refreshSec: number, e
 export function useEmail(id: string | undefined) {
   return useQuery({
     queryKey: keys.email(id ?? ''),
-    queryFn: ({ signal }) => api.get<Email>(`/emails/${encodeId(id!)}`, undefined, signal),
+    queryFn: () => api.get<Email>(`/emails/${encodeId(id!)}`),
     enabled: !!id,
     retry: false,
   });
@@ -83,7 +85,7 @@ export function useProcessing(enabled: boolean) {
 function useStat<T>(kind: string, filters: Filters, extra: Query, enabled = true) {
   return useQuery({
     queryKey: keys.stats(kind, { filters, extra }),
-    queryFn: ({ signal }) => api.get<T>('/stats', { ...toApiFilterQuery(filters), ...extra }, signal),
+    queryFn: () => api.get<T>('/stats', { ...toApiFilterQuery(filters), ...extra }),
     placeholderData: keepPreviousData,
     staleTime: 30_000,
     enabled,
@@ -95,8 +97,9 @@ export const useTopSenders = (f: Filters) => useStat<TopSender[]>('top_senders',
 export const useTopRecipients = (f: Filters) => useStat<TopRecipient[]>('top_recipients', f, { top_recipients: 1 });
 export const useTopRelays = (f: Filters) => useStat<TopRelay[]>('top_relays', f, { top_relays: 1 });
 export const useByHost = (f: Filters) => useStat<HostStats[]>('by_host', f, { by_host: 1 });
-export const useTimeline = (f: Filters, bucket: 'hour' | 'day') =>
-  useStat<TimelinePoint[]>(`timeline_${bucket}`, f, { timeline: 1, bucket });
+/** `tz` (`+02:00`) puts bucket boundaries on local hours/days. */
+export const useTimeline = (f: Filters, bucket: 'hour' | 'day', tz: string) =>
+  useStat<TimelinePoint[]>(`timeline_${bucket}_${tz}`, f, { timeline: 1, bucket, tz });
 
 /** Overall counter for one status code (not filtered). */
 export function useStatusCount(code: string) {

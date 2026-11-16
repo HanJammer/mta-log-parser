@@ -6,7 +6,9 @@ import { useByHost, useSession, useStatusCount, useTimeline, useTopRecipients, u
 import { STATUS_CODES, type HostStats } from '../../api/types';
 import { toSearchParams, withTextFilter, type Filters, type TextField } from '../../lib/filters';
 import { setPrefs, usePrefs } from '../../lib/prefs';
+import { tzOffset } from '../../lib/format';
 import { useListState } from '../../lib/useListState';
+import { errorText } from '../../lib/errors';
 import { Button, cx, Segmented, Spinner } from '../../ui/primitives';
 import { StatusIcon } from '../../ui/StatusBadge';
 import { ActiveFilters } from '../messages/ActiveFilters';
@@ -185,7 +187,7 @@ export function StatsPage() {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { state, setFilters } = useListState();
-  const { defaultRange, hiddenTop } = usePrefs();
+  const { defaultRange, hiddenTop, timeZone } = usePrefs();
   const hiddenCount = hiddenTop.senders.length + hiddenTop.recipients.length + hiddenTop.relays.length;
   const config = useSession().data?.config ?? {};
   const f = state.filters;
@@ -193,7 +195,7 @@ export function StatsPage() {
   const bucket = bucketPref === 'auto' ? autoBucket(f) : bucketPref;
 
   const byHost = useByHost(f);
-  const timeline = useTimeline(f, bucket);
+  const timeline = useTimeline(f, bucket, tzOffset(timeZone));
   const senders = useTopSenders(f);
   const recipients = useTopRecipients(f);
   const relays = useTopRelays(f);
@@ -243,7 +245,7 @@ export function StatsPage() {
           sub={byHost.data ? t('stats.filteredSub', { count: totals.count, n: nf.format(totals.count) }) : undefined}
           className="panel-dist"
         >
-          {byHost.isPending ? <Loading /> : byHost.isError ? <p className="error-text">{byHost.error.message}</p> : <StackBar values={totals} total={totals.count} />}
+          {byHost.isPending ? <Loading /> : byHost.isError ? <p className="error-text">{errorText(byHost.error, t)}</p> : <StackBar values={totals} total={totals.count} />}
         </Panel>
 
         <Panel
@@ -262,7 +264,7 @@ export function StatsPage() {
             />
           }
         >
-          {timeline.isPending ? <Loading /> : timeline.isError ? <p className="error-text">{timeline.error.message}</p> : <Timeline points={timeline.data} bucket={bucket} />}
+          {timeline.isPending ? <Loading /> : timeline.isError ? <p className="error-text">{errorText(timeline.error, t)}</p> : <Timeline points={timeline.data} bucket={bucket} />}
         </Panel>
 
         <Panel title={t('stats.byHost')} className="panel-hosts">

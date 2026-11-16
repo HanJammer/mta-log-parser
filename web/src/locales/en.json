@@ -1,5 +1,7 @@
 {
-  "app": { "title": "MTA Log Parser" },
+  "app": {
+    "title": "MTA Log Parser"
+  },
   "nav": {
     "label": "Main navigation",
     "messages": "Messages",
@@ -21,7 +23,29 @@
   },
   "errors": {
     "unreachable": "Cannot reach the server.",
-    "loadFailed": "Could not load data"
+    "loadFailed": "Could not load data",
+    "code": {
+      "NETWORK": "Cannot reach the server.",
+      "UNAUTHORIZED": "Your session has ended. Log in again.",
+      "INVALID_CREDENTIALS": "Wrong login or password.",
+      "TOO_MANY_ATTEMPTS": "Too many failed attempts. Wait a while and try again.",
+      "TOO_MANY_ATTEMPTS_WAIT": "Too many failed attempts. Try again in {{n}} min.",
+      "CSRF_FAILED": "The request was blocked by the CSRF check. Reload the page and try again.",
+      "INVALID_FILTER": "Invalid filter.",
+      "INVALID_DATE": "Invalid date.",
+      "INVALID_ORDER": "This column cannot be sorted.",
+      "INVALID_PARAMETER": "Invalid parameter.",
+      "INVALID_ACCOUNT": "Invalid login or password.",
+      "LOCAL_AUTH_ONLY": "Accounts are managed by LDAP.",
+      "RESULT_TOO_LARGE": "The result is too large. Narrow the filters.",
+      "TIME_WINDOW_REQUIRED": "Log line search needs a start date. Pick a time range.",
+      "NOT_FOUND": "Not found.",
+      "USER_EXISTS": "This login is already taken.",
+      "ALREADY_SET_UP": "An account already exists. Log in instead.",
+      "LAST_ACCOUNT": "The last account cannot be deleted.",
+      "QUERY_TIMEOUT": "The database query took too long. Narrow the time range or the filters.",
+      "DB_UNAVAILABLE": "The database is not available. Try again in a moment."
+    }
   },
   "auth": {
     "loginTitle": "Log in to continue",
@@ -106,7 +130,13 @@
   },
   "range": {
     "label": "Time range",
-    "short": { "1h": "1h", "24h": "24h", "7d": "7d", "30d": "30d", "all": "All" },
+    "short": {
+      "1h": "1h",
+      "24h": "24h",
+      "7d": "7d",
+      "30d": "30d",
+      "all": "All"
+    },
     "long": {
       "1h": "Last hour",
       "24h": "Last 24 hours",
@@ -121,7 +151,12 @@
     "toHint": "Leave empty for “until now”",
     "noStartWarning": "Without a start date the search covers all stored messages and can be slow."
   },
-  "recipients": { "title": "Recipients", "any": "Any recipients", "single": "One recipient", "multiple": "Several recipients" },
+  "recipients": {
+    "title": "Recipients",
+    "any": "Any recipients",
+    "single": "One recipient",
+    "multiple": "Several recipients"
+  },
   "hosts": {
     "title": "Mail servers",
     "all": "All servers",
@@ -178,7 +213,8 @@
     "label": "Search raw log lines",
     "placeholder": "Search log lines…",
     "hint": "Searches every raw log line — slow on large databases. Narrow the time range first.",
-    "slowToast": "Full-text log search is slow and resource-intensive. Narrow the time range if it takes long."
+    "slowToast": "Full-text log search is slow and resource-intensive. Narrow the time range if it takes long.",
+    "windowForced": "Log line search needs a start date, so the time range was set to the last 24 hours."
   },
   "columns": {
     "title": "Columns",

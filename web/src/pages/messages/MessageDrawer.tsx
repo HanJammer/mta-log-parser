@@ -7,6 +7,7 @@ import { copyText } from '../../lib/clipboard';
 import { formatClient, formatDelay, formatRelay, formatSize, formatTime, recipientsOf, tzLabel } from '../../lib/format';
 import { toSearchParams, type ListState } from '../../lib/filters';
 import { usePrefs } from '../../lib/prefs';
+import { errorText } from '../../lib/errors';
 import { Button, cx, Empty, Spinner } from '../../ui/primitives';
 import { Drawer } from '../../ui/overlays';
 import { StatusBadge, StatusIcon, statusKey } from '../../ui/StatusBadge';
@@ -75,7 +76,7 @@ export function MessageDrawer({ id, onClose, onPrev, onNext, state }: Props) {
             <Spinner size={18} label={t('common.loading')} />
           </div>
         )}
-        {q.isError && <Empty title={t('detail.notFound')}>{q.error.message}</Empty>}
+        {q.isError && <Empty title={t('detail.notFound')}>{errorText(q.error, t)}</Empty>}
         {q.data && <Detail e={q.data} />}
       </div>
     </Drawer>

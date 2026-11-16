@@ -1,6 +1,8 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { parseSearch, toSearchParams, type Filters, type ListState } from './filters';
+import i18n from '../i18n';
+import { toast } from '../ui/toast';
+import { parseSearch, toSearchParams, withLogWindow, type Filters, type ListState } from './filters';
 import { usePrefs } from './prefs';
 
 /** List state (filters, page, sort, open message) mirrored in the URL query string. */
@@ -24,7 +26,12 @@ export function useListState() {
   /** Replaces filters and goes back to page 1. */
   const setFilters = useCallback(
     (f: Filters | ((f: Filters) => Filters)) =>
-      update((s) => ({ filters: typeof f === 'function' ? f(s.filters) : f, page: 1 })),
+      update((s) => {
+        const next = typeof f === 'function' ? f(s.filters) : f;
+        const fixed = withLogWindow(next);
+        if (fixed !== next) toast('info', i18n.t('logSearch.windowForced'));
+        return { filters: fixed, page: 1 };
+      }),
     [update],
   );
 

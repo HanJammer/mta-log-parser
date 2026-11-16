@@ -1,5 +1,7 @@
 {
-  "app": { "title": "MTA Log Parser" },
+  "app": {
+    "title": "MTA Log Parser"
+  },
   "nav": {
     "label": "Główna nawigacja",
     "messages": "Wiadomości",
@@ -21,7 +23,29 @@
   },
   "errors": {
     "unreachable": "Brak połączenia z serwerem.",
-    "loadFailed": "Nie udało się wczytać danych"
+    "loadFailed": "Nie udało się wczytać danych",
+    "code": {
+      "NETWORK": "Brak połączenia z serwerem.",
+      "UNAUTHORIZED": "Sesja wygasła. Zaloguj się ponownie.",
+      "INVALID_CREDENTIALS": "Błędny login lub hasło.",
+      "TOO_MANY_ATTEMPTS": "Za dużo nieudanych prób. Odczekaj chwilę i spróbuj ponownie.",
+      "TOO_MANY_ATTEMPTS_WAIT": "Za dużo nieudanych prób. Spróbuj ponownie za {{n}} min.",
+      "CSRF_FAILED": "Żądanie zablokowała ochrona CSRF. Odśwież stronę i spróbuj ponownie.",
+      "INVALID_FILTER": "Nieprawidłowy filtr.",
+      "INVALID_DATE": "Nieprawidłowa data.",
+      "INVALID_ORDER": "Po tej kolumnie nie można sortować.",
+      "INVALID_PARAMETER": "Nieprawidłowy parametr.",
+      "INVALID_ACCOUNT": "Nieprawidłowy login lub hasło.",
+      "LOCAL_AUTH_ONLY": "Kontami zarządza LDAP.",
+      "RESULT_TOO_LARGE": "Wynik jest za duży. Zawęź filtry.",
+      "TIME_WINDOW_REQUIRED": "Wyszukiwanie w liniach logu wymaga daty początkowej. Wybierz zakres czasu.",
+      "NOT_FOUND": "Nie znaleziono.",
+      "USER_EXISTS": "Ten login jest już zajęty.",
+      "ALREADY_SET_UP": "Konto już istnieje. Zaloguj się.",
+      "LAST_ACCOUNT": "Nie można usunąć ostatniego konta.",
+      "QUERY_TIMEOUT": "Zapytanie do bazy trwało za długo. Zawęź zakres czasu lub filtry.",
+      "DB_UNAVAILABLE": "Baza danych jest niedostępna. Spróbuj za chwilę."
+    }
   },
   "auth": {
     "loginTitle": "Zaloguj się, aby kontynuować",
@@ -110,7 +134,13 @@
   },
   "range": {
     "label": "Zakres czasu",
-    "short": { "1h": "1 h", "24h": "24 h", "7d": "7 dni", "30d": "30 dni", "all": "Całość" },
+    "short": {
+      "1h": "1 h",
+      "24h": "24 h",
+      "7d": "7 dni",
+      "30d": "30 dni",
+      "all": "Całość"
+    },
     "long": {
       "1h": "Ostatnia godzina",
       "24h": "Ostatnie 24 godziny",
@@ -125,7 +155,12 @@
     "toHint": "Puste pole oznacza „do teraz”",
     "noStartWarning": "Bez daty początkowej przeszukiwane są wszystkie zapisane wiadomości — może to trwać długo."
   },
-  "recipients": { "title": "Odbiorcy", "any": "Dowolni odbiorcy", "single": "Jeden odbiorca", "multiple": "Wielu odbiorców" },
+  "recipients": {
+    "title": "Odbiorcy",
+    "any": "Dowolni odbiorcy",
+    "single": "Jeden odbiorca",
+    "multiple": "Wielu odbiorców"
+  },
   "hosts": {
     "title": "Serwery pocztowe",
     "all": "Wszystkie serwery",
@@ -184,7 +219,8 @@
     "label": "Szukaj w liniach logu",
     "placeholder": "Szukaj w liniach logu…",
     "hint": "Przeszukuje każdą linię logu — przy dużej bazie działa wolno. Najpierw zawęź zakres czasu.",
-    "slowToast": "Pełnotekstowe przeszukiwanie logów jest wolne i obciąża serwer. Jeśli trwa długo, zawęź zakres czasu."
+    "slowToast": "Pełnotekstowe przeszukiwanie logów jest wolne i obciąża serwer. Jeśli trwa długo, zawęź zakres czasu.",
+    "windowForced": "Wyszukiwanie w liniach logu wymaga daty początkowej, więc ustawiono zakres „ostatnie 24 godziny”."
   },
   "columns": {
     "title": "Kolumny",

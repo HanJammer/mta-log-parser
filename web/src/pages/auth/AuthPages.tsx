@@ -8,6 +8,7 @@ import { keys, useSession } from '../../api/hooks';
 import { LANGUAGES, setLang, type Lang } from '../../i18n';
 import { BrandMark } from '../../shell/Brand';
 import { Splash } from '../../shell/Splash';
+import { errorText } from '../../lib/errors';
 import { Button, Field, Input, Select } from '../../ui/primitives';
 import { validateLogin, validatePassword } from './validation';
 
@@ -86,9 +87,7 @@ export function LoginPage() {
       await qc.invalidateQueries({ queryKey: keys.session });
       navigate(safeNext(params.get('next')), { replace: true });
     } catch (err) {
-      if (err instanceof ApiError && err.status === 401) setError(t('auth.wrongCredentials'));
-      else if (err instanceof ApiError && err.status === 429) setError(t('auth.throttled'));
-      else setError(err instanceof Error ? err.message : String(err));
+      setError(errorText(err, t));
     } finally {
       setBusy(false);
     }
@@ -142,7 +141,11 @@ export function SetupPage() {
       await qc.invalidateQueries({ queryKey: keys.session });
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
+      if (err instanceof ApiError && err.code === 'ALREADY_SET_UP') {
+        await qc.invalidateQueries({ queryKey: keys.session });
+        navigate('/login', { replace: true });
+      }
+      setError(errorText(err, t));
     } finally {
       setBusy(false);
     }

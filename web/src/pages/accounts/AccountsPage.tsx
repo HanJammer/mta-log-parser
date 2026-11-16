@@ -2,25 +2,14 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { KeyRound, Plus, Trash2, UserRound } from 'lucide-react';
-import { ApiError } from '../../api/client';
 import { useSession, useUserMutations, useUsers } from '../../api/hooks';
+import { errorText } from '../../lib/errors';
 import { Button, Empty, Field, Input, Spinner } from '../../ui/primitives';
 import { Dialog } from '../../ui/overlays';
 import { toast } from '../../ui/toast';
 import { validateLogin, validatePassword } from '../auth/validation';
 
 type Mode = { kind: 'create' } | { kind: 'password'; login: string } | { kind: 'delete'; login: string } | null;
-
-function errText(err: unknown, t: (k: string) => string, on409?: string): string {
-  if (err instanceof ApiError) {
-    if (err.status === 409 && on409) {
-      const base = t(on409);
-      return err.message && err.message.toLowerCase() !== base.toLowerCase() ? `${base} (${err.message})` : base;
-    }
-    return err.message || err.code;
-  }
-  return err instanceof Error ? err.message : String(err);
-}
 
 export function AccountsPage() {
   const { t } = useTranslation();
@@ -52,7 +41,7 @@ export function AccountsPage() {
             <Spinner size={18} label={t('common.loading')} />
           </div>
         ) : users.isError ? (
-          <Empty title={t('errors.loadFailed')}>{users.error.message}</Empty>
+          <Empty title={t('errors.loadFailed')}>{errorText(users.error, t)}</Empty>
         ) : users.data.length === 0 ? (
           <Empty title={t('accounts.none')} />
         ) : (
@@ -128,7 +117,7 @@ function CreateDialog({ onClose }: { onClose: () => void }) {
         <Field label={t('accounts.confirm')} error={touched ? confirmErr : null}>
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>
-        {create.isError && <p className="error-text">{errText(create.error, t, 'accounts.exists')}</p>}
+        {create.isError && <p className="error-text">{errorText(create.error, t)}</p>}
       </form>
     </Dialog>
   );
@@ -177,7 +166,7 @@ function PasswordDialog({ login, onClose }: { login: string; onClose: () => void
         <Field label={t('accounts.confirm')} error={touched ? confirmErr : null}>
           <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" />
         </Field>
-        {setPassword.isError && <p className="error-text">{errText(setPassword.error, t)}</p>}
+        {setPassword.isError && <p className="error-text">{errorText(setPassword.error, t)}</p>}
       </form>
     </Dialog>
   );
@@ -215,7 +204,7 @@ function DeleteDialog({ login, onClose }: { login: string; onClose: () => void }
       }
     >
       <p>{t('accounts.deleteBody', { login })}</p>
-      {remove.isError && <p className="error-text">{errText(remove.error, t, 'accounts.lastAccount')}</p>}
+      {remove.isError && <p className="error-text">{errorText(remove.error, t)}</p>}
     </Dialog>
   );
 }

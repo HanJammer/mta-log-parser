@@ -20,12 +20,15 @@ export const API_BASE = `${PREFIX}/api`;
 export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
+  /** seconds, from the `Retry-After` header (429) */
+  readonly retryAfter?: number;
 
-  constructor(status: number, code: string, message: string) {
+  constructor(status: number, code: string, message: string, retryAfter?: number) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.code = code;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -95,10 +98,13 @@ export async function request<T>(method: string, path: string, options: RequestO
 
   if (!response.ok) {
     const p = (payload ?? {}) as { error_code?: string; message?: string };
+    const retry = Number.parseInt(response.headers.get('Retry-After') ?? '', 10);
     const err = new ApiError(
       response.status,
-      p.error_code ?? (response.status === 401 ? 'UNAUTHORIZED' : `HTTP_${response.status}`),
+      p.error_code ??
+        (response.status === 401 ? 'UNAUTHORIZED' : response.status === 503 ? 'DB_UNAVAILABLE' : response.status === 504 ? 'QUERY_TIMEOUT' : `HTTP_${response.status}`),
       p.message ?? response.statusText,
+      Number.isFinite(retry) ? retry : undefined,
     );
     if (response.status === 401 && !AUTH_PATHS.includes(path)) unauthorizedListener?.();
     throw err;

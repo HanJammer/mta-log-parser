@@ -6,6 +6,7 @@ import { visibleColumns, type CellCtx } from '../../lib/columns';
 import { emptyFilters, withTextFilter, withoutTextFilter, type Op, type TextField } from '../../lib/filters';
 import { useListState } from '../../lib/useListState';
 import { setPrefs, usePrefs } from '../../lib/prefs';
+import { errorText } from '../../lib/errors';
 import { Button, Empty, Spinner } from '../../ui/primitives';
 import { ActiveFilters } from './ActiveFilters';
 import { ColumnChooser } from './ColumnChooser';
@@ -100,7 +101,7 @@ export function MessagesPage() {
         {q.isFetching && <div className="loadbar" aria-hidden="true" />}
         {q.isError ? (
           <Empty icon={<TriangleAlert size={28} />} title={t('errors.loadFailed')}>
-            <p className="mono">{q.error.message}</p>
+            <p>{errorText(q.error, t)}</p>
             <Button icon={<RotateCcw size={14} />} onClick={() => void q.refetch()}>
               {t('common.retry')}
             </Button>

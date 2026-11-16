@@ -78,6 +78,31 @@ export interface ListState {
 }
 
 export const DEFAULT_ORDER = 'timestamp';
+/** `order` values the API accepts (indexed fields); anything else is answered with 400 INVALID_ORDER. */
+export const SORT_FIELDS = [
+  'id',
+  'queue_id',
+  'host',
+  'timestamp',
+  'first_attempt',
+  'last_attempt',
+  'mail_from',
+  'mail_to',
+  'subject',
+  'size',
+  'service',
+] as const;
+
+/**
+ * The API refuses `log_lines` without a lower time bound (400 TIME_WINDOW_REQUIRED). When a log
+ * search would run unbounded, fall back to the last 24 hours. Returns the same object when nothing
+ * had to change.
+ */
+export function withLogWindow(f: Filters): Filters {
+  if (!f.logSearch) return f;
+  const unbounded = f.range === 'all' || (f.range === 'custom' && !f.from);
+  return unbounded ? { ...f, range: '24h', from: undefined, to: undefined } : f;
+}
 
 export function emptyFilters(range: RangePreset): Filters {
   return { text: [], statuses: [], hosts: [], range, logSearch: '' };
@@ -137,10 +162,11 @@ export function parseSearch(search: URLSearchParams, defaultRange: RangePreset):
 
   const page = Number.parseInt(search.get('page') ?? '1', 10);
   const dir = search.get('order_dir') === 'asc' ? 'asc' : 'desc';
+  const order = search.get('order') ?? '';
   return {
-    filters,
+    filters: withLogWindow(filters),
     page: Number.isFinite(page) && page > 0 ? page : 1,
-    order: search.get('order') || DEFAULT_ORDER,
+    order: (SORT_FIELDS as readonly string[]).includes(order) ? order : DEFAULT_ORDER,
     dir,
     msg: search.get('msg') ?? undefined,
   };

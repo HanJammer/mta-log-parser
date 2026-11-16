@@ -56,6 +56,7 @@ export function Popover({
 }
 
 let modalCount = 0;
+const dialogStack: object[] = [];
 
 export function Dialog({
   open,
@@ -77,6 +78,28 @@ export function Dialog({
   const { t } = useTranslation();
   const ref = useRef<HTMLDivElement>(null);
   useFocusReturn(open, ref);
+  const closeRef = useRef(onClose);
+  useEffect(() => {
+    closeRef.current = onClose;
+  });
+  // Escape closes the topmost dialog even when focus fell back to <body> (e.g. after a submit
+  // button got disabled while a request was running).
+  useEffect(() => {
+    if (!open) return;
+    const token = {};
+    dialogStack.push(token);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !e.defaultPrevented && dialogStack[dialogStack.length - 1] === token) {
+        e.preventDefault();
+        closeRef.current();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      dialogStack.splice(dialogStack.indexOf(token), 1);
+    };
+  }, [open]);
   useEffect(() => {
     if (!open) return;
     const root = document.getElementById('root');
@@ -102,13 +125,7 @@ export function Dialog({
         tabIndex={-1}
         className={cx('dialog', className)}
         style={{ width: `min(${width}px, calc(100vw - 24px))` }}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            e.stopPropagation();
-            onClose();
-          }
-          trapTab(e, ref.current);
-        }}
+        onKeyDown={(e) => trapTab(e, ref.current)}
       >
         <header className="dialog-head">
           <h2 id="dialog-title">{title}</h2>

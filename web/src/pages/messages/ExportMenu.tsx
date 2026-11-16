@@ -7,6 +7,7 @@ import { exportFilename, fetchAll, writeWorkbook, type ExportProgress } from '..
 import { toSearchParams, type ListState } from '../../lib/filters';
 import { copyText } from '../../lib/clipboard';
 import { setPrefs, usePrefs } from '../../lib/prefs';
+import { errorText } from '../../lib/errors';
 import { Button, Spinner } from '../../ui/primitives';
 import { Popover } from '../../ui/overlays';
 import { toast } from '../../ui/toast';
@@ -49,7 +50,7 @@ export function ExportMenu({ state, pageRows, count, columns, maxLimit }: Props)
       toast('success', t('export.done', { count: rows.length, n: nf.format(rows.length) }));
       setOpen(false);
     } catch (err) {
-      if (!(err instanceof DOMException && err.name === 'AbortError')) toast('error', t('export.failed', { message: err instanceof Error ? err.message : String(err) }));
+      if (!(err instanceof DOMException && err.name === 'AbortError')) toast('error', t('export.failed', { message: errorText(err, t) }));
     } finally {
       setProgress(null);
       abort.current = null;

@@ -134,3 +134,11 @@ export function formatDelay(delay: number | null | undefined): string {
 }
 
 export const numberFmt = (lng: string) => new Intl.NumberFormat(lng);
+
+/** Offset of the chosen display zone as `+HH:MM` (for `/api/stats?timeline&tz=`). */
+export function tzOffset(tz: TimeZonePref): string {
+  if (tz === 'utc') return '+00:00';
+  const off = -new Date().getTimezoneOffset();
+  const a = Math.abs(off);
+  return `${off >= 0 ? '+' : '-'}${pad(Math.floor(a / 60))}:${pad(a % 60)}`;
+}
