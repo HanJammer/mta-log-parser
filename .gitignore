@@ -19,3 +19,4 @@ references/
 instance/
 node_modules/
 !tests/fixtures/*.log
+.claude/worktrees/

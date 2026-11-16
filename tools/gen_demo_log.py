@@ -24,7 +24,7 @@ REMOTE = [
 ]
 SUBJECTS = ['Invoice {n}', 'Weekly backup summary', 'Re: contract renewal', 'Meeting notes - infrastructure sync',
             'Purchase order PO-{n}', 'Your password will expire in 7 days', 'Scan from MFP-{n}', 'Ticket OPS-{n} updated',
-            'Fwd: price list', 'Monitoring alert: disk usage {n}%', 'Newsletter: what changed in November',
+            'Fwd: price list', 'Monitoring alert: disk usage {pct}%', 'Newsletter: what changed in November',
             'Re: lunch?', 'Delivery delayed: order {n}', 'Quarterly report draft']
 INTERNAL_CLIENTS = [('app01.example.com', '192.0.2.11'), ('app02.example.com', '192.0.2.12'),
                     ('unknown', '192.0.2.50'), ('scanner.example.com', '192.0.2.77')]
@@ -103,7 +103,7 @@ def message(w, rnd, ts, host, n):
         w.add(step(), host, f'postfix/pickup[{pid()}]', f'{q}: uid=0 from=<root>')
         rcpts = [f'admins@{LOCAL_DOMAINS[0]}']
 
-    subject = rnd.choice(SUBJECTS).format(n=rnd.randint(100, 9999))
+    subject = rnd.choice(SUBJECTS).format(n=rnd.randint(100, 9999), pct=rnd.randint(85, 99))
     cp = pid()
     w.add(step(), host, f'postfix/cleanup[{cp}]',
           f'{q}: warning: header Subject: {subject} from localhost[127.0.0.1]; from=<{sender}> to=<{rcpts[0]}> proto=ESMTP')

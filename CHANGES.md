@@ -12,6 +12,22 @@ Unreleased VER.
 - provide variables in .env for user defined parser regexps override
 - parse log file from the new lines since last parsing
 
+Ver. 2.0.0
+- ~~NEW: server (`host`) of every message from the syslog header; message ID is now `<server>:<queue_id>`; several log files / globs / .gz in `MAIL_LOG_FILENAME`; `MAIL_HOST_NAME` fallback ([issue #30](https://github.com/drlight17/mta-log-parser/issues/30))~~
+- ~~NEW: postfix fields `client`, `sasl_method`, `sasl_username`, `service`, `dsn`, `delay`, `delays`, `nrcpt`, `dkim`, `tls`, `multiple` and per recipient `recipients[]` (to, orig_to, status, relay, dsn, delay, time); relay parsing for `relay=none` and LMTP~~
+- ~~NEW: message status = worst recipient delivery instead of `multiple` (`LEGACY_MULTIPLE_STATUS=true` for the old behaviour); message relay prefers network deliveries over local/LMTP copies~~
+- ~~NEW: postfix fields taken only from the matching line type (no forging through the Subject header); NOQUEUE rejects imported~~
+- ~~NEW: JSON API (`/api/session`, `/api/login`, `/api/setup`, `/api/users`, `/api/emails` with any number of filters, `/api/emails/<id>`, `/api/facets`, `/api/stats` with top relays, per server and timeline)~~
+- ~~GUI: new single-page web UI (React): column chooser, per column filters, click-to-filter, status chips, server picker, message drawer with recipients and log lines, statistics, dark/light theme, English/Polish/Russian~~
+- ~~NEW: Excel export of visible columns, current page or all matching rows, optional recipients sheet~~
+- ~~SECURITY: account management required no login; plaintext passwords (stored, logged, returned by /api/auth); LDAP filter injection and anonymous bind with an empty password; default SECRET_KEY; reflected XSS through the search URL parameter; RethinkDB admin UI exposed; see README "Security"~~
+- ~~SECURITY: hashed passwords (legacy rows upgraded at login), session expiry and invalidation, CSRF guard, login throttling, CSP and security headers, literal (escaped) filters, validated sort fields, query timeouts~~
+- ~~BUG: importer retried forever on some log lines and kept the lock file; unbound variables (exim bounces, lines without a date, local orig_to, Exchange events/size); base64 subject padding; housekeeping timezone; `HOUSEKEEPING_DAYS=0` deleted everything~~
+- ~~BUG: one shared RethinkDB connection failed all requests when one was cancelled; now one connection per request with a small pool~~
+- ~~PERF: fast RFC 3339 / BSD timestamp parsing, batched upserts, no per message get + update~~
+- ~~DOCKER: Python 3.12, non-root container, read-only log mount, RethinkDB admin on 127.0.0.1, allow-list .dockerignore, `RETHINK_USER`/`RETHINK_PASSWORD`~~
+- ~~DEV: tests (pytest) for the parser, importer and API; synthetic demo log generator `tools/gen_demo_log.py`~~
+
 Ver. 1.8.5
 - ~~BUG: dependabot security alert fix~~
 - ~~BUG: install Python packages system-wide instead of virtualenv ([pr#26](https://github.com/drlight17/mta-log-parser/pull/26))~~

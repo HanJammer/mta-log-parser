@@ -44,7 +44,7 @@ log = logging.getLogger(__name__)
 
 # !!! change version upon update !!!
 global VERSION
-VERSION = "1.8.5"
+VERSION = "2.0.0"
 
 lockfile = settings.lock_file
 """Absolute path of the lock file that exists while the importer runs (read by the web UI)"""
