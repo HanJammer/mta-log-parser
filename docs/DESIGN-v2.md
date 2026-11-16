@@ -28,10 +28,11 @@ Existing fields stay (old UI-independent consumers and stats code rely on them).
 | `queue_id` | str | MTA queue id |
 | `host` | str | **new**. Mail server that wrote the line: the syslog hostname field (`filterek08`). Fallback: env `MAIL_HOST_NAME`, else `""`. Indexed. |
 | `timestamp`, `first_attempt`, `last_attempt` | time | RethinkDB time, UTC. The offset in the log line (e.g. `+02:00`) must be honoured; `LOG_TIMEZONE` applies only when the line has no offset. |
-| `mail_from` | str | |
+| `mail_from` | str | **changed** (`DECODE_SRS=true`, default): an SRS-rewritten envelope sender (`SRS0=HHH=TT=example.com=john@srs.forwarder.net`, also SRS1) is stored decoded (`john@example.com`). |
+| `srs_from` | str | **new**. The SRS address `mail_from` was decoded from; absent otherwise. The `mail_from` filter matches both. |
 | `mail_to` | str | legacy: single address, or JSON-encoded list (strings or `{mail_to, mail_to_alias}`) when status is `multiple`. Keep as is. |
 | `mail_to_alias` | dict | legacy |
-| `recipients` | list | **new**. One entry per recipient, latest delivery attempt wins: `{to, orig_to, status: {code, message}, relay: {host, ip, port}, dsn, delay, delays, timestamp}` |
+| `recipients` | list | **new**. One entry per recipient, latest delivery attempt wins: `{to, orig_to, status: {code, message}, relay: {host, ip, port}, dsn, delay, delays, timestamp, hidden}`. `hidden: true` marks recipients matching `HIDDEN_RECIPIENTS` (addresses or shell patterns, e.g. an `always_bcc` archive copy): they are left out of `mail_to`, `multiple`, `status` and `relay` unless the message has no other recipient; a failed hidden delivery is appended to `status.message` as `[hidden recipient <addr>: <code>]`. |
 | `subject`, `size` (KiB), `message_id` | | |
 | `status` | `{code, message}` | code ∈ `sent, reject, deferred, bounced, multiple, unknown`. **Changed**: when `recipients` exist the code is the *worst* recipient delivery (bounced > reject > deferred > sent) and the message starts with `N recipients: …`; `multiple` only appears on legacy documents or with `LEGACY_MULTIPLE_STATUS=true`. |
 | `multiple` | bool | **new**. More than one distinct recipient. |

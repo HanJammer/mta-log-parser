@@ -12,6 +12,11 @@ Unreleased VER.
 - provide variables in .env for user defined parser regexps override
 - parse log file from the new lines since last parsing
 
+Ver. 2.1.0
+- ~~NEW: `HIDDEN_RECIPIENTS` - recipients added to every message (archive / always_bcc copy) are left out of the recipient list, status and relay; failed hidden deliveries are noted in the status message~~
+- ~~NEW: SRS-rewritten senders (`SRS0=`/`SRS1=`) are shown as the original sender, the SRS address is kept in `srs_from` (`DECODE_SRS`)~~
+- ~~GUI: every recipient and relay listed in the table cell instead of the first one and +N (setting "Show all recipients and relays")~~
+
 Ver. 2.0.0
 - ~~NEW: server (`host`) of every message from the syslog header; message ID is now `<server>:<queue_id>`; several log files / globs / .gz in `MAIL_LOG_FILENAME`; `MAIL_HOST_NAME` fallback ([issue #30](https://github.com/drlight17/mta-log-parser/issues/30))~~
 - ~~NEW: postfix fields `client`, `sasl_method`, `sasl_username`, `service`, `dsn`, `delay`, `delays`, `nrcpt`, `dkim`, `tls`, `multiple` and per recipient `recipients[]` (to, orig_to, status, relay, dsn, delay, time); relay parsing for `relay=none` and LMTP~~

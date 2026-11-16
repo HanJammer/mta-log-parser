@@ -26,8 +26,15 @@ React. This is a fork of the abandoned [Privex postfix log parser](https://githu
 - **Honest status for multi-recipient mail.** A message gets the status of its worst delivery (bounced > rejected >
   deferred > sent) instead of the old catch-all `multiple` — on servers that add an archive copy to every message
   the old status hid failed deliveries. `LEGACY_MULTIPLE_STATUS=true` restores the 1.x behaviour.
+- **Hidden recipients** (2.1): `HIDDEN_RECIPIENTS=backup@archive.local` (addresses or patterns such as
+  `*@archive.local`) keeps an archive / `always_bcc` copy out of the recipient list, status and relay. The copy is
+  still shown, marked *hidden*, in the message details, and a failed archive delivery is noted in the status message.
+- **Original sender of forwarded mail** (2.1): SRS-rewritten envelope senders (postsrsd,
+  `SRS0=HHH=TT=example.com=john@srs.example.net`) are shown as `john@example.com` with an *SRS* tag; filtering by
+  sender matches both addresses (`DECODE_SRS=false` turns it off).
 - **New web UI:** choose, reorder and resize columns; filter any column (contains / does not contain / is exactly),
-  click any value to filter by it; status chips, server picker, time presets; message drawer with all metadata,
+  click any value to filter by it; every recipient and relay of a message listed right in the table (or the first
+  one and +N, see Settings); status chips, server picker, time presets; message drawer with all metadata,
   the recipients table and the raw log lines; statistics per server, top senders / recipients / relays and a
   timeline; dark and light themes; English, Polish and Russian.
 - **Excel export** of the visible columns — current page or all matching rows — with an optional second sheet
@@ -52,7 +59,7 @@ filter in the API (`/api/emails?<field>=text`, `<field>__not=text`, `<field>__eq
 | Time, first / last attempt | `timestamp`, `first_attempt`, `last_attempt` | `2026-10-26 06:28:47` |
 | Server | `host` | `mx01` |
 | Queue ID | `queue_id` | `25CF61E7BCF` |
-| Sender, recipient(s) | `mail_from`, `mail_to` | `dms@example.com` |
+| Sender, recipient(s) | `mail_from`, `mail_to` | `dms@example.com` (SRS senders decoded, the SRS address is in `srs_from`) |
 | Subject, Message-ID, size | `subject`, `message_id`, `size` | needs `header_checks` with `WARN` for the subject |
 | Status, status message | `status.code`, `status.message` | `sent`, `deferred`, `bounced`, `reject`, `unknown` |
 | Relay | `relay` | `example-com.mail.protection.outlook.com [52.101.91.156]:25` |
@@ -105,6 +112,9 @@ Docker notes:
 - **One file per server**, e.g. collected into `/var/log/mail/<server>/mail.log`:
   `MAIL_LOG_PATH=/var/log/mail` and `MAIL_LOG_FILENAME=*/mail.log`.
 - **Logs without a syslog header** (e.g. exim `mainlog`): set `MAIL_HOST_NAME` to the server's name.
+- **An archive copy on every message** (`always_bcc`, LMTP to an archive mailbox): list the address in
+  `HIDDEN_RECIPIENTS`. The setting is applied when messages are imported, so messages already stored change only if
+  their lines are imported again.
 - Include the previous rotated file so messages that span a rotation stay complete:
   `MAIL_LOG_FILENAME=mail.log,mail.log.1`.
 
@@ -119,7 +129,7 @@ Docker notes:
    now have at least 8 characters for new accounts.
 4. The old web UI (`/emails`, `/auth`, form logins) is gone; bookmarks to `/emails?...` open the new UI.
 5. New settings — all optional — are documented in [example.env](example.env): `MAIL_HOST_NAME`,
-   `LEGACY_MULTIPLE_STATUS`, `IMPORT_BATCH_SIZE`, `LOCK_FILE`, `SESSION_COOKIE_SECURE`, `SESSION_LIFETIME_HOURS`,
+   `LEGACY_MULTIPLE_STATUS`, `HIDDEN_RECIPIENTS`, `DECODE_SRS`, `IMPORT_BATCH_SIZE`, `LOCK_FILE`, `SESSION_COOKIE_SECURE`, `SESSION_LIFETIME_HOURS`,
    `LOGIN_MAX_FAILURES*`, `RETHINK_USER`/`RETHINK_PASSWORD`, `QUERY_TIMEOUT`, `LDAP_TIMEOUT`, `MAIL_LOG_GID`.
 
 ## Security
