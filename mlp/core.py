@@ -15,6 +15,7 @@ Copyright::
     +===================================================+
 
 """
+import asyncio
 import json
 import logging
 import rethinkdb.ast
@@ -43,6 +44,39 @@ log = logging.getLogger(__name__)
 __STORE = {}
 
 
+# Indexes the web API relies on, created in addition to ``settings.rethink_tables``.
+EXTRA_INDEXES = {'sent_mail': ['host', 'service', 'queue_id', 'subject', 'size']}
+
+
+def reset_rethink():
+    """Forget the cached connection (e.g. after a connection error) and close it; the next call reconnects."""
+    cached = __STORE.pop('rethink', None)
+    cached_loop = __STORE.pop('rethink_loop', None)
+    if cached is None:
+        return
+    try:
+        closing = cached[1].close(noreply_wait=False)
+    except Exception:  # pragma: no cover - best effort, the connection may be broken already
+        return
+    if not asyncio.iscoroutine(closing):
+        return
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop is not None and loop is cached_loop:
+        loop.create_task(_quiet(closing))
+    else:
+        closing.close()     # the connection's loop is gone; nothing left to close
+
+
+async def _quiet(aw):
+    try:
+        await aw
+    except Exception:  # pragma: no cover
+        pass
+
+
 async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
     """
 
@@ -54,19 +88,41 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
         >>> r.table('blocks').insert(dict(block_num=1234)).run(conn, array_limit=settings.rethink_arr_limit)
 
 
+    The connection is cached per event loop and re-created when it was closed.
+
     :return DB rethink: (Tuple Param 1) - Main RethinkDB database query object :class:`rethinkdb.RethinkDB`
     :return DefaultConnection conn: (Tuple Param 2) - Rethink Connection Object :class:`rethinkdb.net.DefaultConnection`
     """
+    loop = asyncio.get_running_loop()
     if 'rethink' in __STORE:
-        return __STORE['rethink']
-
-    
+        if __STORE.get('rethink_loop') is loop and __STORE['rethink'][1].is_open():
+            return __STORE['rethink']
+        reset_rethink()
 
     # Setup RethinkDB connection
     # log.debug('Initialising RethinkDB connector')
     r: rethinkdb.query = RethinkDB()
     r.set_loop_type('asyncio')
-    conn = await r.connect(settings.rethink_host, settings.rethink_port)
+    conn_kwargs = {}
+    if settings.rethink_user:
+        conn_kwargs = dict(user=settings.rethink_user, password=settings.rethink_password)
+    conn = await r.connect(settings.rethink_host, settings.rethink_port, **conn_kwargs)
+    db = r.db(settings.rethink_db)   # type: DB
+    if __STORE.get('schema_ready') != settings.rethink_db:
+        try:
+            await _ensure_schema(r, conn)
+        except BaseException:
+            await _quiet(conn.close(noreply_wait=False))
+            raise
+        __STORE['schema_ready'] = settings.rethink_db
+
+    __STORE['rethink'] = db, conn, r
+    __STORE['rethink_loop'] = loop
+    return __STORE['rethink']
+
+
+async def _ensure_schema(r, conn):
+    """Create the database, tables and indexes if missing (once per process)."""
     dbs = await r.db_list().run(conn, array_limit=settings.rethink_arr_limit)
     if settings.rethink_db not in dbs:
         log.debug('Database %s did not exist. Creating.', settings.rethink_db)
@@ -83,19 +139,40 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
             log.debug('Table %s did not exist. Creating.', t2)
             await db.table_create(t2).run(conn, array_limit=settings.rethink_arr_limit)
         idxs = await db.table(t).index_list().run(conn, array_limit=settings.rethink_arr_limit)
-        for index in indexes:
+        wanted = list(indexes) + [i for i in EXTRA_INDEXES.get(t, []) if i not in indexes]
+        created = []
+        for index in wanted:
             if index not in idxs:
                 log.debug('Index %s on table %s did not exist. Creating.', index, t)
                 if index == 'status_code':
-                    # TODO need to test index creation
-                    await db.table(t).index_create(index,r.row['status']['code'], multi=True).run(conn, array_limit=settings.rethink_arr_limit)
-                #if index == 'lines':
-                #    await db.table(t).index_create(index, lambda row: row['lines'].map(lambda line: [line['message']]).reduce(lambda left, right: left.set_union(right)), multi=True).run(conn, array_limit=settings.rethink_arr_limit)
+                    await db.table(t).index_create(index, r.row['status']['code'], multi=True).run(conn, array_limit=settings.rethink_arr_limit)
                 else:
                     await db.table(t).index_create(index).run(conn, array_limit=settings.rethink_arr_limit)
+                created.append(index)
+        if created:
+            await db.table(t).index_wait(*created).run(conn, array_limit=settings.rethink_arr_limit)
 
-    __STORE['rethink'] = db, conn, r
-    return __STORE['rethink']
+
+async def run(query, conn, timeout: float = None, **kwargs):
+    """
+    Run a ReQL query with ``array_limit`` from the settings and a client-side timeout
+    (``QUERY_TIMEOUT``; raises :class:`asyncio.TimeoutError`). Cursors are drained into a list.
+    """
+    kwargs.setdefault('array_limit', settings.rethink_arr_limit)
+    timeout = settings.query_timeout if timeout is None else timeout
+
+    async def _run():
+        res = await query.run(conn, **kwargs)
+        if hasattr(res, '__aiter__'):
+            out = []
+            async for x in res:
+                out.append(x)
+            return out
+        return res
+
+    if timeout and timeout > 0:
+        return await asyncio.wait_for(_run(), timeout)
+    return await _run()
 
 
 async def extract_json(rq: request) -> Union[list, dict]:
