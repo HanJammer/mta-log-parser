@@ -120,7 +120,9 @@
     "exportRecipients": "Recipients sheet in Excel export",
     "exportRecipientsHint": "Adds a second sheet with one row per recipient delivery",
     "layout": "Column layout",
-    "resetColumns": "Reset columns"
+    "resetColumns": "Reset columns",
+    "expandCells": "Show all recipients and relays",
+    "expandCellsHint": "List every value in the table cell instead of the first one and +N"
   },
   "units": {
     "seconds_one": "{{count}} second",
@@ -257,7 +259,8 @@
     "filterRow": "Column filters",
     "filterRowToggle": "Show or hide the filter row under the column headers",
     "empty": "No messages match these filters",
-    "emptyHint": "Widen the time range or remove a filter."
+    "emptyHint": "Widen the time range or remove a filter.",
+    "srsFrom": "Decoded from the SRS address {{value}}"
   },
   "pager": {
     "label": "Pages",
@@ -299,7 +302,10 @@
     "copy": "Copy",
     "copied": "Log lines copied",
     "copyFailed": "Could not copy: the page is not served over HTTPS. Select the text and copy it by hand.",
-    "noLines": "No log lines stored for this message."
+    "noLines": "No log lines stored for this message.",
+    "srsFrom": "SRS address",
+    "hiddenRecipient": "hidden",
+    "hiddenRecipientHint": "Matches HIDDEN_RECIPIENTS: not counted in the recipient list, status or relay"
   },
   "export": {
     "title": "Export to Excel",

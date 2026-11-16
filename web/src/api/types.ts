@@ -28,6 +28,8 @@ export interface Recipient {
   delay?: number | null;
   delays?: string | null;
   timestamp?: string | null;
+  /** matches HIDDEN_RECIPIENTS (e.g. an archive copy added to every message) */
+  hidden?: boolean | null;
 }
 
 export interface LogLine {
@@ -44,6 +46,8 @@ export interface Email {
   first_attempt?: string | null;
   last_attempt?: string | null;
   mail_from?: string | null;
+  /** the SRS-rewritten envelope sender when mail_from was decoded from it */
+  srs_from?: string | null;
   mail_to?: string | null;
   mail_to_alias?: Record<string, string> | null;
   recipients?: Recipient[] | null;

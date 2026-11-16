@@ -88,10 +88,11 @@ export async function writeWorkbook(opts: {
       t('col.dsn'),
       t('col.delay'),
       t('detail.rcptTime'),
+      t('detail.hiddenRecipient'),
     ];
     const rr: Array<Array<string | number | Date | null>> = [];
     for (const e of rows) {
-      const recips = recipientsOf(e);
+      const recips = recipientsOf(e, true);
       const fallbackRelay = relaysOf(e)[0];
       for (const r of recips) {
         rr.push([
@@ -107,11 +108,12 @@ export async function writeWorkbook(opts: {
           r.dsn ?? '',
           r.delay ?? null,
           wallClockDate(r.timestamp, tz),
+          r.hidden ? t('detail.hiddenRecipient') : '',
         ]);
       }
     }
     const ws2 = XLSX.utils.aoa_to_sheet([rh, ...rr], { cellDates: true, dateNF: dateFmt });
-    ws2['!cols'] = [22, 10, 14, 30, 30, 26, 10, 60, 36, 8, 8, 22].map((wch) => ({ wch }));
+    ws2['!cols'] = [22, 10, 14, 30, 30, 26, 10, 60, 36, 8, 8, 22, 10].map((wch) => ({ wch }));
     if (rr.length) ws2['!autofilter'] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: rr.length, c: rh.length - 1 } }) };
     XLSX.utils.book_append_sheet(wb, ws2, t('export.sheetRecipients').slice(0, 31));
   }

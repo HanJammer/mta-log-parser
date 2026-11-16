@@ -728,6 +728,39 @@ body.is-resizing {
   line-height: 17px;
   cursor: help;
 }
+/* multi-value cells, expanded: one value per line, the row grows */
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  padding: 4px 0;
+  line-height: 1.35;
+}
+.cell-line {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-srs,
+.tag-hidden {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 4px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  line-height: 15px;
+  letter-spacing: 0.02em;
+  vertical-align: 1px;
+}
+.tag-srs {
+  cursor: help;
+}
+.rtable tr.is-hidden-rcpt td {
+  color: var(--ink-3);
+}
 .tls {
   display: inline-flex;
   align-items: center;

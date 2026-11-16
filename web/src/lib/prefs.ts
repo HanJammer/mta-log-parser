@@ -14,6 +14,8 @@ export interface Prefs {
   /** seconds, 0 = off */
   refresh: number;
   coloredRows: boolean;
+  /** show every recipient / relay in the table cell instead of the first one and +N */
+  expandCells: boolean;
   timeZone: TimeZonePref;
   defaultRange: RangePreset;
   /** visible columns, in display order */
@@ -32,6 +34,7 @@ export const DEFAULT_PREFS: Prefs = {
   density: 'compact',
   refresh: 0,
   coloredRows: false,
+  expandCells: true,
   timeZone: 'local',
   defaultRange: '24h',
   columns: DEFAULT_COLUMNS,

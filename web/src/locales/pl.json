@@ -120,7 +120,9 @@
     "exportRecipients": "Arkusz „Odbiorcy” w eksporcie Excel",
     "exportRecipientsHint": "Drugi arkusz: jeden wiersz na każde doręczenie do odbiorcy",
     "layout": "Układ kolumn",
-    "resetColumns": "Przywróć kolumny"
+    "resetColumns": "Przywróć kolumny",
+    "expandCells": "Pokazuj wszystkich odbiorców i relaye",
+    "expandCellsHint": "Wypisuj w komórce tabeli wszystkie wartości zamiast pierwszej i +N"
   },
   "units": {
     "seconds_one": "{{count}} sekunda",
@@ -263,7 +265,8 @@
     "filterRow": "Filtry kolumn",
     "filterRowToggle": "Pokaż lub ukryj wiersz filtrów pod nagłówkami kolumn",
     "empty": "Żadna wiadomość nie pasuje do filtrów",
-    "emptyHint": "Poszerz zakres czasu albo usuń któryś filtr."
+    "emptyHint": "Poszerz zakres czasu albo usuń któryś filtr.",
+    "srsFrom": "Odkodowany z adresu SRS {{value}}"
   },
   "pager": {
     "label": "Strony",
@@ -305,7 +308,10 @@
     "copy": "Kopiuj",
     "copied": "Skopiowano linie logu",
     "copyFailed": "Nie udało się skopiować: strona nie działa przez HTTPS. Zaznacz tekst i skopiuj go ręcznie.",
-    "noLines": "Dla tej wiadomości nie zapisano linii logu."
+    "noLines": "Dla tej wiadomości nie zapisano linii logu.",
+    "srsFrom": "Adres SRS",
+    "hiddenRecipient": "ukryty",
+    "hiddenRecipientHint": "Pasuje do HIDDEN_RECIPIENTS: nie liczy się do listy odbiorców, statusu ani relaya"
   },
   "export": {
     "title": "Eksport do Excela",

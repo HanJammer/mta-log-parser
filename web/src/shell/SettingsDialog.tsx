@@ -95,6 +95,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
           <div className="settings-row settings-row-switch">
             <Switch checked={prefs.coloredRows} onChange={(coloredRows) => setPrefs({ coloredRows })} label={t('settings.coloredRows')} hint={t('settings.coloredRowsHint')} />
           </div>
+          <div className="settings-row settings-row-switch">
+            <Switch checked={prefs.expandCells} onChange={(expandCells) => setPrefs({ expandCells })} label={t('settings.expandCells')} hint={t('settings.expandCellsHint')} />
+          </div>
         </section>
 
         <section>

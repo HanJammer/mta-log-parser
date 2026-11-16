@@ -22,6 +22,8 @@ export interface CellCtx {
   tz: TimeZonePref;
   t: TFunction;
   addFilter: (field: TextField, value: string, op: Op) => void;
+  /** show all values of multi-value cells (recipients, relays) instead of the first one and +N */
+  expand?: boolean;
 }
 
 export interface ColumnDef {
@@ -77,6 +79,28 @@ function More({ n, title }: { n: number; title: string }) {
   );
 }
 
+/** A multi-value cell: every value on its own line (ctx.expand), else the first one and a +N chip. */
+function Multi<T>({ ctx, items, render, title }: { ctx: CellCtx; items: T[]; render: (x: T) => ReactNode; title: string }) {
+  if (!items.length) return null;
+  if (ctx.expand && items.length > 1) {
+    return (
+      <span className="cell-stack">
+        {items.map((x, i) => (
+          <span key={i} className="cell-line">
+            {render(x)}
+          </span>
+        ))}
+      </span>
+    );
+  }
+  return (
+    <span className="cell-split">
+      {render(items[0])}
+      <More n={items.length - 1} title={title} />
+    </span>
+  );
+}
+
 function RelayText({ r }: { r: Relay }) {
   const port = r.port !== undefined && r.port !== null && r.port !== '' ? `:${r.port}` : '';
   return (
@@ -109,7 +133,23 @@ export const COLUMNS: ColumnDef[] = [
   time('timestamp', 'time'),
   text('host', 'host', (e) => e.host, 84, { sort: 'host', mono: true }),
   text('queue_id', 'queue_id', (e) => e.queue_id ?? e.id, 124, { sort: 'queue_id', mono: true }),
-  text('from', 'mail_from', (e) => e.mail_from, 192, { sort: 'mail_from' }),
+  {
+    id: 'from',
+    width: 212,
+    sort: 'mail_from',
+    filter: 'mail_from',
+    render: (e, c) => (
+      <span className="cell-split">
+        <V ctx={c} field="mail_from" value={e.mail_from} />
+        {e.srs_from && (
+          <span className="tag-srs" title={c.t('table.srsFrom', { value: e.srs_from })}>
+            SRS
+          </span>
+        )}
+      </span>
+    ),
+    exportValue: (e) => e.mail_from ?? '',
+  },
   {
     id: 'to',
     width: 204,
@@ -118,12 +158,13 @@ export const COLUMNS: ColumnDef[] = [
     render: (e, c) => {
       const rs = recipientsOf(e);
       if (!rs.length) return null;
+      if (rs.length > 1) {
+        return <Multi ctx={c} items={rs} render={(r) => <V ctx={c} field="mail_to" value={r.to} />} title={rs.map((r) => r.to).join('\n')} />;
+      }
       return (
         <span className="cell-split">
           <V ctx={c} field="mail_to" value={rs[0].to} />
-          {rs.length > 1 ? (
-            <More n={rs.length - 1} title={rs.map((r) => r.to).join('\n')} />
-          ) : isMultiple(e) ? (
+          {isMultiple(e) ? (
             <span className="more" title={c.t('table.multipleRecipients')}>
               +
             </span>
@@ -164,15 +205,18 @@ export const COLUMNS: ColumnDef[] = [
     width: 250,
     filter: 'relay',
     render: (e, c) => {
-      const rs = relaysOf(e);
-      if (!rs.length) return null;
+      const rs = relaysOf(e, c.expand);
       return (
-        <span className="cell-split">
-          <V ctx={c} field="relay" value={relayKey(rs[0])}>
-            <RelayText r={rs[0]} />
-          </V>
-          <More n={rs.length - 1} title={rs.map(formatRelay).join('\n')} />
-        </span>
+        <Multi
+          ctx={c}
+          items={rs}
+          render={(r) => (
+            <V ctx={c} field="relay" value={relayKey(r)}>
+              <RelayText r={r} />
+            </V>
+          )}
+          title={rs.map(formatRelay).join('\n')}
+        />
       );
     },
     exportValue: (e) => relaysOf(e).map(formatRelay).join(', '),

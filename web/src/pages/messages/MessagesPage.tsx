@@ -41,7 +41,10 @@ export function MessagesPage() {
     (field: TextField, value: string, op: Op) => setFilters((f) => withTextFilter(f, { field, op, value })),
     [setFilters],
   );
-  const ctx: CellCtx = useMemo(() => ({ tz: prefs.timeZone, t, addFilter }), [prefs.timeZone, t, addFilter]);
+  const ctx: CellCtx = useMemo(
+    () => ({ tz: prefs.timeZone, t, addFilter, expand: prefs.expandCells }),
+    [prefs.timeZone, t, addFilter, prefs.expandCells],
+  );
 
   const onColumnFilter = useCallback(
     (field: TextField, op: Op, value: string, prevOp: Op | null) =>

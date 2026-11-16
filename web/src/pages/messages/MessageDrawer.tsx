@@ -107,6 +107,7 @@ function Detail({ e }: { e: Email }) {
   const { timeZone } = usePrefs();
   const [wrap, setWrap] = useState(true);
   const recips = recipientsOf(e);
+  const allRecips = recipientsOf(e, true);
   const tm = (iso?: string | null) => (iso ? formatTime(iso, timeZone) : null);
   const logText = (e.lines ?? []).map((l) => `${l.timestamp} ${l.message}`).join('\n');
   const st = statusKey(e.status?.code);
@@ -134,6 +135,9 @@ function Detail({ e }: { e: Email }) {
       <div className="dgrid">
         <Group title={t('detail.envelope')}>
           <Row label={t('col.from')}>{e.mail_from}</Row>
+          <Row label={t('detail.srsFrom')} mono>
+            {e.srs_from}
+          </Row>
           <Row label={t('col.to')}>{recips.map((r) => r.to).join(', ')}</Row>
           <Row label={t('col.subject')}>{e.subject}</Row>
           <Row label={t('col.message_id')} mono>
@@ -207,9 +211,9 @@ function Detail({ e }: { e: Email }) {
 
       <section className="dsection">
         <h3>
-          {t('detail.recipients')} <span className="count">{recips.length}</span>
+          {t('detail.recipients')} <span className="count">{allRecips.length}</span>
         </h3>
-        {recips.length === 0 ? (
+        {allRecips.length === 0 ? (
           <p className="muted-3">—</p>
         ) : (
           <div className="rtable-wrap">
@@ -225,10 +229,17 @@ function Detail({ e }: { e: Email }) {
                 </tr>
               </thead>
               <tbody>
-                {recips.map((r, i) => (
-                  <tr key={`${r.to}-${i}`}>
+                {allRecips.map((r, i) => (
+                  <tr key={`${r.to}-${i}`} className={r.hidden ? 'is-hidden-rcpt' : undefined}>
                     <td>
-                      <div>{r.to}</div>
+                      <div>
+                        {r.to}
+                        {r.hidden && (
+                          <span className="tag-hidden" title={t('detail.hiddenRecipientHint')}>
+                            {t('detail.hiddenRecipient')}
+                          </span>
+                        )}
+                      </div>
                       {r.orig_to && r.orig_to !== r.to && (
                         <div className="muted-3 small">
                           {t('detail.rcptOrigTo')}: {r.orig_to}
@@ -246,9 +257,9 @@ function Detail({ e }: { e: Email }) {
             </table>
           </div>
         )}
-        {recips.some((r) => r.status?.message) && recips.length > 1 && (
+        {allRecips.some((r) => r.status?.message) && allRecips.length > 1 && (
           <ul className="rmessages">
-            {recips
+            {allRecips
               .filter((r) => r.status?.message)
               .map((r, i) => (
                 <li key={i}>

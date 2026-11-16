@@ -64,10 +64,15 @@ interface LegacyTo {
 
 /**
  * Recipients of a message: the new `recipients` list, else the legacy JSON list in `mail_to`
- * (status `multiple`), else the single `mail_to`.
+ * (status `multiple`), else the single `mail_to`. Deliveries flagged `hidden` (HIDDEN_RECIPIENTS)
+ * are left out unless `includeHidden` is set or no other recipient is left.
  */
-export function recipientsOf(e: Email): Recipient[] {
-  if (e.recipients && e.recipients.length) return e.recipients;
+export function recipientsOf(e: Email, includeHidden = false): Recipient[] {
+  if (e.recipients && e.recipients.length) {
+    if (includeHidden) return e.recipients;
+    const visible = e.recipients.filter((r) => !r.hidden);
+    return visible.length ? visible : e.recipients;
+  }
   const raw = (e.mail_to ?? '').trim();
   if (raw.startsWith('[')) {
     try {
@@ -91,9 +96,10 @@ export function recipientsOf(e: Email): Recipient[] {
 /**
  * Distinct relays of a message: the message-level relay first (the backend picks the
  * representative delivery, preferring network relays over LMTP archive copies), then any other
- * relay used by individual recipients.
+ * relay used by individual recipients. With `recipientOrder` the relays follow the order of the
+ * recipients instead (the message-level relay only comes first if no recipient has a relay).
  */
-export function relaysOf(e: Email): Relay[] {
+export function relaysOf(e: Email, recipientOrder = false): Relay[] {
   const out: Relay[] = [];
   const seen = new Set<string>();
   const add = (r: Relay | null | undefined) => {
@@ -103,14 +109,16 @@ export function relaysOf(e: Email): Relay[] {
       out.push(r);
     }
   };
+  const recips = recipientsOf(e);
+  if (!recipientOrder || !recips.some((r) => relayKey(r.relay))) add(e.relay);
+  for (const r of recips) add(r.relay);
   add(e.relay);
-  for (const r of e.recipients ?? []) add(r.relay);
   return out;
 }
 
 /** Multi-recipient message: the `multiple` flag, several recipients, or legacy status `multiple`. */
 export function isMultiple(e: Email): boolean {
-  return e.multiple === true || (e.recipients?.length ?? 0) > 1 || (e.status?.code ?? '') === 'multiple' || recipientsOf(e).length > 1;
+  return e.multiple === true || (e.status?.code ?? '') === 'multiple' || recipientsOf(e).length > 1;
 }
 
 export function statusCode(s: Status | null | undefined): string {
