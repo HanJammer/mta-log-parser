@@ -5,7 +5,7 @@ import json
 import re
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
-from typing import Iterable, List
+from typing import List
 
 from rethinkdb import r
 
