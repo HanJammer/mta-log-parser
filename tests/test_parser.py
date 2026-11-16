@@ -81,9 +81,21 @@ def test_issue_example_recipients(rfc):
     assert smtp['timestamp'] == datetime(2026, 10, 26, 6, 28, 49, 80848, tzinfo=UTC)
 
 
-def test_legacy_multiple_still_works(rfc):
+def test_multiple_recipients_get_aggregated_status(rfc):
     out, docs = rfc
     d = docs['mx1:1A2B3C4D5E6']
+    assert d['status']['code'] == 'sent'
+    assert d['status']['message'].startswith('2 recipients: 2 sent.')
+    assert d['multiple'] is True
+    assert json.loads(d['mail_to']) == ['bob@example.com', 'carol@example.com']
+
+
+def test_legacy_multiple_status_setting(rfc, monkeypatch):
+    from mlp import settings
+    from mlp.main import build_document
+    out, _ = rfc
+    monkeypatch.setattr(settings, 'legacy_multiple_status', True)
+    d = build_document('mx1:1A2B3C4D5E6', out['messages']['mx1:1A2B3C4D5E6'], out['multiple_recipients'])
     assert d['status'] == {'code': 'multiple', 'message': 'multiple, see log lines below'}
     assert json.loads(d['mail_to']) == ['bob@example.com', 'carol@example.com']
     assert [r['to'] for r in d['recipients']] == ['bob@example.com', 'carol@example.com']

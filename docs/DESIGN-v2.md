@@ -33,8 +33,9 @@ Existing fields stay (old UI-independent consumers and stats code rely on them).
 | `mail_to_alias` | dict | legacy |
 | `recipients` | list | **new**. One entry per recipient, latest delivery attempt wins: `{to, orig_to, status: {code, message}, relay: {host, ip, port}, dsn, delay, delays, timestamp}` |
 | `subject`, `size` (KiB), `message_id` | | |
-| `status` | `{code, message}` | code ∈ `sent, reject, deferred, bounced, multiple, unknown` |
-| `relay` | `{host, ip, port}` | last delivery relay (legacy). For postfix also `relay=none` → `{host: "none"}`. |
+| `status` | `{code, message}` | code ∈ `sent, reject, deferred, bounced, multiple, unknown`. **Changed**: when `recipients` exist the code is the *worst* recipient delivery (bounced > reject > deferred > sent) and the message starts with `N recipients: …`; `multiple` only appears on legacy documents or with `LEGACY_MULTIPLE_STATUS=true`. |
+| `multiple` | bool | **new**. More than one distinct recipient. |
+| `relay` | `{host, ip, port}` | relay of the representative delivery: the worst one if a delivery failed, else the last *network* delivery (LMTP/local hand-offs such as an archive copy are skipped when a network relay exists). For postfix also `relay=none` → `{host: "none"}`. |
 | `client` | `{host, ip}` | connecting client (`client=unknown[192.168.140.50]`) |
 | `sasl_method`, `sasl_username` | str | **new**. From `client=…, sasl_method=login, sasl_username=dms@tt-cs.com.pl` |
 | `service` | str | **new**. Postfix service that received the message: `smtpd`, `submission`, `smtps`, `pickup`, … (from `postfix/submission/smtpd[…]`). |

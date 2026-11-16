@@ -71,6 +71,9 @@ mail_log = mail_log_path+'/'+mail_log_filename
 mail_host_name = env('MAIL_HOST_NAME', '')
 """Host name stored for lines without a syslog hostname field (e.g. a log written without a syslog header)"""
 
+legacy_multiple_status = env_bool('LEGACY_MULTIPLE_STATUS', False)
+"""If True, messages with several recipients get the 1.x catch-all status ``multiple`` instead of their worst delivery status"""
+
 import_batch_size = max(1, env_int('IMPORT_BATCH_SIZE', 500))
 """Number of messages per RethinkDB ``insert(..., conflict='update')`` call when importing"""
 

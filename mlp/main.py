@@ -517,12 +517,78 @@ def build_document(key: str, msg: PostfixMessage, multiple_recipients: dict, con
 
     if _domain(m.get('mail_from')) in settings.ignore_domains or _domain(m.get('mail_to')) in settings.ignore_domains:
         return None
-    # check if there are many recipients
-    if key in multiple_recipients:
-        m['mail_to'] = json.dumps(multiple_recipients[key])
-        m['status']['code'] = 'multiple'
-        m['status']['message'] = 'multiple, see log lines below'
+    recipients = [r for r in (m.get('recipients') or []) if r.get('to')]
+    if settings.legacy_multiple_status or not recipients:
+        # check if there are many recipients (legacy detection, consecutive delivery lines only)
+        if key in multiple_recipients:
+            m['mail_to'] = json.dumps(multiple_recipients[key])
+            m['status']['code'] = 'multiple'
+            m['status']['message'] = 'multiple, see log lines below'
+        return m
+    _aggregate_recipients(m, recipients, multiple_recipients.get(key))
     return m
+
+
+# Worst first: the message status is the status of its worst recipient delivery.
+_RCPT_SEVERITY = {'bounced': 5, 'expired': 5, 'reject': 4, 'deferred': 3, 'sent': 1}
+
+
+def _rcpt_rank(r: dict) -> int:
+    return _RCPT_SEVERITY.get((r.get('status') or {}).get('code'), 2)
+
+
+def _network_relay(r: dict) -> bool:
+    rel = r.get('relay') or {}
+    ip = str(rel.get('ip') or '')
+    return bool(ip) and not ip.startswith('private/') and rel.get('host') not in ('', 'none', 'local')
+
+
+def _aggregate_recipients(m: dict, recipients: list, legacy_list: list = None):
+    """
+    Derive message level ``status``, ``relay`` and ``mail_to`` from the per recipient deliveries.
+
+    A message to several recipients (e.g. an always_bcc archive copy plus the real recipient) gets the status of its
+    worst delivery (bounced > reject > deferred > sent) instead of the legacy catch-all ``multiple`` (set
+    ``LEGACY_MULTIPLE_STATUS=true`` to keep the old behaviour); ``multiple`` is then a separate boolean field.
+    The message ``relay`` prefers a network relay over local/LMTP hand-offs.
+    """
+    worst = max(recipients, key=_rcpt_rank)
+    rank = _rcpt_rank(worst)
+    code = (worst.get('status') or {}).get('code')
+    if code == 'expired':
+        code = 'bounced'
+    if code in _KNOWN_STATUSES:
+        m['status'] = dict(code=code, message=(worst.get('status') or {}).get('message') or '')
+    # the delivery that represents the message: the worst one if something failed, else the last network delivery
+    net = [r for r in recipients if _network_relay(r)]
+    if rank > 1:
+        primary = worst
+    else:
+        primary = net[-1] if net else recipients[-1]
+    for k in ('dsn', 'delay', 'delays'):
+        if primary.get(k) not in (None, ''):
+            m[k] = primary[k]
+    if _network_relay(primary):
+        m['relay'] = dict(primary.get('relay'))
+    elif net:
+        m['relay'] = dict(net[-1].get('relay'))
+
+    addresses = []
+    for r in recipients:
+        if r['to'] not in addresses:
+            addresses.append(r['to'])
+    m['multiple'] = len(addresses) > 1
+    if m['multiple']:
+        if len(addresses) > 1 and m['status']['code'] != 'unknown':
+            counts = defaultdict(int)
+            for r in recipients:
+                counts[(r.get('status') or {}).get('code') or 'unknown'] += 1
+            summary = ', '.join(f'{v} {k}' for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
+            m['status']['message'] = f'{len(addresses)} recipients: {summary}. ' + (m['status'].get('message') or '')
+        # legacy JSON list (aliases kept when the legacy detection found them)
+        m['mail_to'] = json.dumps(legacy_list if legacy_list and len(legacy_list) >= len(addresses) else addresses)
+    else:
+        m['mail_to'] = addresses[0]
 
 
 def build_documents(import_output: dict, convert_time=False) -> List[dict]:
