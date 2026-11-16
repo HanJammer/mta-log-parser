@@ -4,6 +4,7 @@ that was cancelled mid-query (client went away) or hit a driver error broke ever
 request (503 DB_UNAVAILABLE).
 """
 import asyncio
+import contextvars
 
 import pytest
 
@@ -20,8 +21,9 @@ async def test_parallel_requests_survive_cancelled_ones(authed):
         return (await authed.get(path)).status_code
 
     for _ in range(3):
-        victims = [asyncio.ensure_future(get(p)) for p in PATHS]
-        survivors = [asyncio.ensure_future(get(p)) for p in PATHS]
+        # like hypercorn, every request starts from a context without a connection
+        victims = [asyncio.create_task(get(p), context=contextvars.Context()) for p in PATHS]
+        survivors = [asyncio.create_task(get(p), context=contextvars.Context()) for p in PATHS]
         await asyncio.sleep(0)
         for v in victims:
             v.cancel()
@@ -38,5 +40,16 @@ async def test_connection_is_per_context(db):
         finally:
             await core.close_rethink()
 
-    a, b = await asyncio.gather(conn_of(), conn_of())
-    assert a != b
+    # tasks with their own context (like separate requests) never share a connection while both are running
+    started = asyncio.Event()
+
+    async def hold():
+        _, conn, _ = await core.get_rethink()
+        started.set()
+        await asyncio.sleep(0.05)
+        return id(conn)
+
+    t1 = asyncio.create_task(hold(), context=contextvars.Context())
+    await started.wait()
+    t2 = asyncio.create_task(conn_of(), context=contextvars.Context())
+    assert await t1 != await t2

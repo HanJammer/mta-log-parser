@@ -31,6 +31,7 @@ TEST_HOST = '127.0.0.1' if settings.rethink_host == 'localhost' else settings.re
 def _api_settings(monkeypatch):
     """Point the shared settings at the API test database (other test suites use their own DB)."""
     core.reset_rethink()
+    core.clear_pool()
     monkeypatch.setattr(settings, 'rethink_db', TEST_DB)
     monkeypatch.setattr(settings, 'rethink_host', TEST_HOST)
     monkeypatch.setattr(settings, 'secret_key', TEST_SECRET)
@@ -38,6 +39,7 @@ def _api_settings(monkeypatch):
     monkeypatch.setattr(settings, 'ldap_connect', '')
     yield
     core.reset_rethink()
+    core.clear_pool()
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -62,6 +64,7 @@ async def db():
     await d.table('sent_mail').insert(FIXTURE_DOCS).run(conn)
     yield d, conn
     core.reset_rethink()
+    core.clear_pool()
 
 
 @pytest.fixture

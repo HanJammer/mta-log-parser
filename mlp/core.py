@@ -29,6 +29,7 @@ from quart import request
 # from quart.exceptions import BadRequest
 from werkzeug.exceptions import BadRequest
 from rethinkdb import RethinkDB
+from rethinkdb.errors import ReqlDriverError
 from rethinkdb.ast import DB
 from rethinkdb.net import DefaultConnection
 
@@ -49,30 +50,62 @@ __STORE = {}
 EXTRA_INDEXES = {'sent_mail': ['host', 'service', 'queue_id', 'subject', 'size']}
 
 
-# The connection belongs to the current asyncio context: each web request (one task per request) gets its own
-# connection, closed in ``teardown_request``; tasks started from a context that already has one (``asyncio.gather``
-# in the importer) share it. One shared process-wide connection broke every in-flight query whenever one request
+# Connections are bound to the current asyncio context: each web request (one task per request) uses its own
+# connection, released in ``teardown_request``; tasks started from a context that already holds one (``asyncio.gather``
+# in the importer) share it. One shared process-wide connection broke every in-flight query whenever a single request
 # was cancelled (client went away, client-side timeout) or failed with a driver error.
+# Cleanly released connections go back to a small idle pool; a connection that saw a cancellation, a timeout or a
+# driver error is closed instead of being reused.
+POOL_MAX_IDLE = 8
+
+
+class _Lease:
+    __slots__ = ('db', 'conn', 'r', 'loop', 'dbname', 'dirty')
+
+    def __init__(self, db, conn, r, loop, dbname):
+        self.db, self.conn, self.r, self.loop, self.dbname = db, conn, r, loop, dbname
+        self.dirty = False
+
+
 _CONN: ContextVar = ContextVar('mlp_rethink_conn', default=None)
+_IDLE: List[_Lease] = []
 
 
-async def close_rethink():
-    """Close the connection of the current context (end of a web request, end of an import run)."""
-    cached = _CONN.get()
+def mark_dirty():
+    """Flag the connection of the current context so it is closed instead of pooled when released."""
+    lease = _CONN.get()
+    if lease is not None:
+        lease.dirty = True
+
+
+async def close_rethink(discard: bool = False):
+    """Release the connection of the current context (end of a web request or of an import run)."""
+    lease = _CONN.get()
     _CONN.set(None)
-    if cached is not None:
-        await _quiet(cached[1].close(noreply_wait=False))
-
-
-def reset_rethink():
-    """Forget the connection of the current context (e.g. after a connection error) and close it; the next call reconnects."""
-    cached = _CONN.get()
-    _CONN.set(None)
-    cached_loop = cached[3] if cached is not None else None
-    if cached is None:
+    if lease is None:
         return
     try:
-        closing = cached[1].close(noreply_wait=False)
+        loop = asyncio.get_running_loop()
+    except RuntimeError:  # pragma: no cover
+        loop = None
+    if (not discard and not lease.dirty and lease.loop is loop and lease.conn.is_open()
+            and _idle_connection(lease.conn) and len(_IDLE) < POOL_MAX_IDLE):
+        _IDLE.append(lease)
+        return
+    await _quiet(lease.conn.close(noreply_wait=False))
+
+
+def _idle_connection(conn) -> bool:
+    """True when the connection has no query waiting for a response and no open cursor (safe to hand over)."""
+    inst = getattr(conn, '_instance', None)
+    if inst is None:
+        return False
+    return not getattr(inst, '_user_queries', True) and not getattr(inst, '_cursor_cache', True)
+
+
+def _close_lease(lease: '_Lease'):
+    try:
+        closing = lease.conn.close(noreply_wait=False)
     except Exception:  # pragma: no cover - best effort, the connection may be broken already
         return
     if not asyncio.iscoroutine(closing):
@@ -81,10 +114,24 @@ def reset_rethink():
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
-    if loop is not None and loop is cached_loop:
+    if loop is not None and loop is lease.loop:
         loop.create_task(_quiet(closing))
     else:
         closing.close()     # the connection's loop is gone; nothing left to close
+
+
+def reset_rethink():
+    """Drop the connection of the current context (e.g. after a connection error); the next call reconnects."""
+    lease = _CONN.get()
+    _CONN.set(None)
+    if lease is not None:
+        _close_lease(lease)
+
+
+def clear_pool():
+    """Close all idle pooled connections (tests switch databases and event loops)."""
+    while _IDLE:
+        _close_lease(_IDLE.pop())
 
 
 async def _quiet(aw):
@@ -105,20 +152,28 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
         >>> r.table('blocks').insert(dict(block_num=1234)).run(conn, array_limit=settings.rethink_arr_limit)
 
 
-    The connection is cached per asyncio context (see ``_CONN``) and re-created when it was closed.
+    The connection belongs to the current asyncio context (see ``_CONN``); it is taken from the idle pool or
+    opened, and re-created when it was closed.
 
     :return DB rethink: (Tuple Param 1) - Main RethinkDB database query object :class:`rethinkdb.RethinkDB`
     :return DefaultConnection conn: (Tuple Param 2) - Rethink Connection Object :class:`rethinkdb.net.DefaultConnection`
     """
     loop = asyncio.get_running_loop()
-    cached = _CONN.get()
-    if cached is not None:
-        if cached[3] is loop and cached[1].is_open():
-            return cached[:3]
+    lease = _CONN.get()
+    if lease is not None:
+        if lease.loop is loop and lease.conn.is_open() and lease.dbname == settings.rethink_db:
+            return lease.db, lease.conn, lease.r
         reset_rethink()
 
+    while _IDLE:
+        cand = _IDLE.pop()
+        if cand.loop is loop and cand.conn.is_open() and cand.dbname == settings.rethink_db:
+            cand.dirty = False
+            _CONN.set(cand)
+            return cand.db, cand.conn, cand.r
+        _close_lease(cand)
+
     # Setup RethinkDB connection
-    # log.debug('Initialising RethinkDB connector')
     r: rethinkdb.query = RethinkDB()
     r.set_loop_type('asyncio')
     conn_kwargs = {}
@@ -134,7 +189,7 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
             raise
         __STORE['schema_ready'] = settings.rethink_db
 
-    _CONN.set((db, conn, r, loop))
+    _CONN.set(_Lease(db, conn, r, loop, settings.rethink_db))
     return db, conn, r
 
 
@@ -187,9 +242,13 @@ async def run(query, conn, timeout: float = None, **kwargs):
             return out
         return res
 
-    if timeout and timeout > 0:
-        return await asyncio.wait_for(_run(), timeout)
-    return await _run()
+    try:
+        if timeout and timeout > 0:
+            return await asyncio.wait_for(_run(), timeout)
+        return await _run()
+    except (asyncio.CancelledError, asyncio.TimeoutError, ReqlDriverError):
+        mark_dirty()     # the connection may be mid-response: never hand it to another request
+        raise
 
 
 async def extract_json(rq: request) -> Union[list, dict]:

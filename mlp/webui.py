@@ -78,8 +78,8 @@ def create_app(path_prefix: str = None, secret_key: str = None) -> Quart:
 
     @app.teardown_request
     async def _close_db(exc=None):
-        # every request has its own RethinkDB connection (see mlp.core._CONN)
-        await close_rethink()
+        # every request has its own RethinkDB connection (see mlp.core._CONN); after any error it is not reused
+        await close_rethink(discard=exc is not None)
 
     @app.errorhandler(FilterError)
     async def _filter_error(exc: FilterError):
