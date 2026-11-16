@@ -38,11 +38,7 @@ def _version() -> str:
 
 
 def _lockfile() -> str:
-    try:
-        from mlp.main import lockfile
-        return lockfile
-    except Exception:  # pragma: no cover
-        return 'processing.lock'
+    return getattr(settings, 'lock_file', None) or 'processing.lock'
 
 
 def _prefix() -> str:

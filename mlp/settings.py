@@ -40,7 +40,7 @@ rethink_db = env('RETHINK_DB', 'maildata')
 rethink_arr_limit = int(env('RETHINK_ARR_LIMIT', 100000))
 
 rethink_tables = [
-    ('sent_mail', 'auth', ['status_code', 'mail_from', 'mail_to', 'mail_to_alias', 'timestamp', 'first_attempt', 'last_attempt']),
+    ('sent_mail', 'auth', ['status_code', 'mail_from', 'mail_to', 'mail_to_alias', 'timestamp', 'first_attempt', 'last_attempt', 'host']),
 ]
 
 # add ldap vars from env
@@ -77,8 +77,27 @@ mail_domain = env('MAIL_DOMAIN', '')
 
 mail_log_path = env('MAIL_LOG_PATH', '/var/log')
 mail_log_filename = env('MAIL_LOG_FILENAME', 'mail.log')
+mail_log_filenames = [f.strip() for f in mail_log_filename.split(',') if f.strip()]
+"""
+``MAIL_LOG_FILENAME`` may be a comma separated list of file names and/or glob patterns (``mail.log,mail.log.1``,
+``hosts/*/mail.log``), relative to ``MAIL_LOG_PATH`` (absolute paths are used as they are). Matching files are
+parsed oldest first (by modification time); ``.gz`` files are read transparently.
+"""
 
 mail_log = mail_log_path+'/'+mail_log_filename
+"""Legacy: the single log file path (only meaningful when ``MAIL_LOG_FILENAME`` is one plain file name)"""
+
+mail_host_name = env('MAIL_HOST_NAME', '')
+"""Host name stored for lines without a syslog hostname field (e.g. a log written without a syslog header)"""
+
+legacy_multiple_status = env_bool('LEGACY_MULTIPLE_STATUS', False)
+"""If True, messages with several recipients get the 1.x catch-all status ``multiple`` instead of their worst delivery status"""
+
+import_batch_size = max(1, env_int('IMPORT_BATCH_SIZE', 500))
+"""Number of messages per RethinkDB ``insert(..., conflict='update')`` call when importing"""
+
+lock_file = path.abspath(env('LOCK_FILE', path.join(path.dirname(path.abspath(path.dirname(__file__))), 'processing.lock')))
+"""Lock file created while the importer runs (the web UI reports \"processing\" while it exists)"""
 
 #admin_pass = env('ADMIN_PASS', 'SetThis!InYourEnv')
 secret_key = env('SECRET_KEY', 'SetThis!InYourEnv')
@@ -86,7 +105,7 @@ secret_key = env('SECRET_KEY', 'SetThis!InYourEnv')
 # add prefix var from env
 path_prefix = env('PATH_PREFIX', '')
 
-# add housekeeping_days var from env
+# add housekeeping_days var from env ('' / unset = disabled; values <= 0 are treated as disabled too)
 housekeeping_days = env_int('HOUSEKEEPING_DAYS', '')
 
 # add datetime_format var from env
@@ -105,7 +124,7 @@ gui_refresh_block = env_bool('GUI_REFRESH_BLOCK', True)
 gui_max_log_period = env_int('GUI_MAX_LOG_PERIOD', 4320)
 
 # add mta var from env
-mta = env('MTA', '')
+mta = env('MTA', '').strip().lower() or 'postfix'
 
 # add exclude from top senders
 exclude_from_top_senders = env('EXCLUDE_FROM_TOP_SENDERS', '')

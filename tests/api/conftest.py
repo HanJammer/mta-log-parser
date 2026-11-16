@@ -12,18 +12,32 @@ TEST_DB = os.environ.get('MLP_TEST_API_DB', 'mlp_test_api')
 TEST_SECRET = 'test-secret-key-for-the-api-tests-0123456789'
 
 from mlp import settings  # noqa: E402
-
-settings.rethink_db = TEST_DB
-# 'localhost' may resolve to ::1 first (slow on Windows when RethinkDB listens on IPv4 only)
-if settings.rethink_host == 'localhost':
-    settings.rethink_host = '127.0.0.1'
-settings.secret_key = TEST_SECRET
-settings.query_timeout = 30
-
 from mlp import auth, core  # noqa: E402
-from mlp.webui import create_app  # noqa: E402
 
-from api_helpers import CSRF, FIXTURE_DOCS, login, post  # noqa: E402,F401
+# Importing mlp.webui builds the default app, which resolves the secret key: use the test key so no
+# instance/secret_key file is generated in the repository.
+_orig_secret = settings.secret_key
+settings.secret_key = TEST_SECRET
+from mlp.webui import create_app  # noqa: E402
+settings.secret_key = _orig_secret
+
+from api.api_helpers import CSRF, FIXTURE_DOCS, login, post  # noqa: E402,F401
+
+# 'localhost' may resolve to ::1 first (slow on Windows when RethinkDB listens on IPv4 only)
+TEST_HOST = '127.0.0.1' if settings.rethink_host == 'localhost' else settings.rethink_host
+
+
+@pytest.fixture(autouse=True)
+def _api_settings(monkeypatch):
+    """Point the shared settings at the API test database (other test suites use their own DB)."""
+    core.reset_rethink()
+    monkeypatch.setattr(settings, 'rethink_db', TEST_DB)
+    monkeypatch.setattr(settings, 'rethink_host', TEST_HOST)
+    monkeypatch.setattr(settings, 'secret_key', TEST_SECRET)
+    monkeypatch.setattr(settings, 'query_timeout', 30)
+    monkeypatch.setattr(settings, 'ldap_connect', '')
+    yield
+    core.reset_rethink()
 
 
 @pytest.fixture(scope='session', autouse=True)
@@ -32,7 +46,7 @@ def _drop_test_db():
     from rethinkdb import RethinkDB
     r = RethinkDB()
     try:
-        with r.connect(settings.rethink_host, settings.rethink_port) as conn:
+        with r.connect(TEST_HOST, settings.rethink_port) as conn:
             if TEST_DB in r.db_list().run(conn):
                 r.db_drop(TEST_DB).run(conn)
     except Exception:  # pragma: no cover

@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-from api_helpers import CSRF, login, post
+from api.api_helpers import CSRF, login, post
 from mlp import auth, security, settings
 
 pytestmark = pytest.mark.asyncio

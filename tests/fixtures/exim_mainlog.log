@@ -1,0 +1,6 @@
+2025-02-15 10:00:00 1sFUlr-000rus-Io <= alice@example.org H=mail.example.org [198.51.100.20]:52344 I=[192.0.2.1]:25 P=esmtps X=TLS1.3:TLS_AES_256_GCM_SHA384:256 CV=no S=2048 id=abc123@example.org T="Hello there" from <alice@example.org> for bob@example.com
+2025-02-15 10:00:01 1sFUlr-000rus-Io => bob <bob@example.com> R=localuser T=local_delivery
+2025-02-15 10:00:01 1sFUlr-000rus-Io Completed
+2025-02-15 10:05:00 1sFUm0-000abc-Zz <= <> R=1sFUlr-000rus-Io U=Debian-exim P=local S=1500 T="Mail delivery failed" from <> for alice@example.org
+2025-02-15 10:05:01 1sFUm0-000abc-Zz ** alice@example.org R=dnslookup T=remote_smtp H=mx.example.org [198.51.100.21]:25: SMTP error from remote mail server after RCPT TO:<alice@example.org>: 550 5.1.1 User unknown
+2025-02-15 10:05:01 1sFUm0-000abc-Zz Completed

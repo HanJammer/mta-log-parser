@@ -139,6 +139,24 @@ async def test_mail_to_matches_alias_and_recipients(authed):
     assert await ids(authed, 'mail_to__not=bob@') == ALL_IDS - {'AAA111', 'filterek08:CC33'}
 
 
+async def test_mail_to_eq_inside_json_list(authed):
+    assert await ids(authed, 'mail_to__eq=dave@example.net') == {'BBB222'}                     # legacy, no recipients
+    assert await ids(authed, 'mail_to__eq=FRANK@example.com') == {'filterek08:25CF61E7BCF'}
+    assert await ids(authed, 'mail_to__eq=example.net') == set()                              # exact, not contains
+    assert await ids(authed, 'mail_to=erin@example.com"') == {'BBB222', 'filterek08:25CF61E7BCF'}
+
+
+async def test_multiple_flag(authed):
+    multi = {'BBB222', 'filterek08:25CF61E7BCF'}           # legacy status "multiple" + 2.0 field
+    assert await ids(authed, 'multiple__eq=true') == multi
+    assert await ids(authed, 'multiple=true') == multi
+    assert await ids(authed, 'multiple__eq=false') == ALL_IDS - multi
+    assert await ids(authed, 'multiple__eq=true&status.code__eq=deferred') == {'filterek08:25CF61E7BCF'}
+    for bad in ('multiple__eq=maybe', 'multiple__not=true'):
+        code, body = await status_of(authed, bad)
+        assert code == 400
+
+
 async def test_new_fields_and_missing_fields(authed):
     assert await ids(authed, 'sasl_username=dms@') == {'filterek08:25CF61E7BCF'}
     assert await ids(authed, 'sasl_method__eq=login') == {'filterek08:25CF61E7BCF'}

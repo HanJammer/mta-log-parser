@@ -1,0 +1,2 @@
+Mar 13 10:57:04 mx4 sm-mta[2001]: 2BDAv4xN002001: from=<alice@example.org>, size=2048, class=0, nrcpts=1, msgid=<sm-1@example.org>, proto=ESMTP, daemon=MTA, relay=mail.example.org [198.51.100.20]
+Mar 13 10:57:05 mx4 sm-mta[2002]: 2BDAv4xN002001: to=<bob@example.com>, ctladdr=<alice@example.org> (1000/1000), delay=00:00:01, xdelay=00:00:01, mailer=esmtp, pri=120000, relay=mx.example.com. [192.0.2.25], dsn=2.0.0, stat=Sent (Ok: queued)

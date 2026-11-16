@@ -33,8 +33,9 @@ Existing fields stay (old UI-independent consumers and stats code rely on them).
 | `mail_to_alias` | dict | legacy |
 | `recipients` | list | **new**. One entry per recipient, latest delivery attempt wins: `{to, orig_to, status: {code, message}, relay: {host, ip, port}, dsn, delay, delays, timestamp}` |
 | `subject`, `size` (KiB), `message_id` | | |
-| `status` | `{code, message}` | code ∈ `sent, reject, deferred, bounced, multiple, unknown` |
-| `relay` | `{host, ip, port}` | last delivery relay (legacy). For postfix also `relay=none` → `{host: "none"}`. |
+| `status` | `{code, message}` | code ∈ `sent, reject, deferred, bounced, multiple, unknown`. **Changed**: when `recipients` exist the code is the *worst* recipient delivery (bounced > reject > deferred > sent) and the message starts with `N recipients: …`; `multiple` only appears on legacy documents or with `LEGACY_MULTIPLE_STATUS=true`. |
+| `multiple` | bool | **new**. More than one distinct recipient. |
+| `relay` | `{host, ip, port}` | relay of the representative delivery: the worst one if a delivery failed, else the last *network* delivery (LMTP/local hand-offs such as an archive copy are skipped when a network relay exists). For postfix also `relay=none` → `{host: "none"}`. |
 | `client` | `{host, ip}` | connecting client (`client=unknown[192.168.140.50]`) |
 | `sasl_method`, `sasl_username` | str | **new**. From `client=…, sasl_method=login, sasl_username=dms@tt-cs.com.pl` |
 | `service` | str | **new**. Postfix service that received the message: `smtpd`, `submission`, `smtps`, `pickup`, … (from `postfix/submission/smtpd[…]`). |
@@ -124,7 +125,10 @@ GET `/api/process_check` → `{processing: bool}` (unchanged, no login needed).
 
 - Timestamps are always returned in UTC (`…+00:00`), whatever offset was stored.
 - `__eq` is a case-insensitive exact match. A plain/`__not` filter with empty text is ignored; `<field>__eq=`
-  matches documents where the field is empty or missing.
+  matches documents where the field is empty or missing. `mail_to__eq` also matches an address inside the
+  JSON-encoded `mail_to` list of multi-recipient messages.
+- `multiple=true|false` (or `multiple__eq=…`): more than one recipient — the 2.0 `multiple` field, or legacy
+  documents with status `multiple`. Other values / operators → `400`.
 - `order` must be one of `id, queue_id, host, timestamp, first_attempt, last_attempt, mail_from, mail_to,
   subject, size, service` (all indexed); anything else → `400 INVALID_ORDER`. Non-integer `limit`/`page`/`offset` → `400`.
 - `log_lines` needs a time window (`timestamp__gt` or another date filter) → otherwise `400 TIME_WINDOW_REQUIRED`.

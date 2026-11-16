@@ -41,6 +41,8 @@ TEXT_FIELDS = (
     'service', 'dsn', 'dkim.domain', 'size', 'log_lines',
 )
 DATE_FIELDS = ('timestamp', 'first_attempt', 'last_attempt')
+#: Boolean fields: ``<field>=true|false`` / ``<field>__eq=true|false``.
+BOOL_FIELDS = ('multiple',)
 #: ``__eq`` on these fields accepts a comma-separated list (OR).
 LIST_EQ_FIELDS = ('status.code', 'host')
 TEXT_OPS = ('', 'not', 'eq')
@@ -141,6 +143,18 @@ def candidates(fname: str, row):
     return r.expr([_s(row[fname])])
 
 
+def multiple_predicate(value: str) -> Callable:
+    """``multiple__eq=true|false``: more than one recipient (2.0 field ``multiple``, legacy status ``multiple``)."""
+    v = value.strip().lower()
+    if v not in ('true', 'false', '1', '0'):
+        raise FilterError("multiple accepts only 'true' or 'false'.")
+    want = v in ('true', '1')
+
+    def is_multiple(row):
+        return row['multiple'].default(False).eq(True) | _s(row['status']['code']).eq('multiple')
+    return (lambda row: is_multiple(row)) if want else (lambda row: is_multiple(row).not_())
+
+
 def text_predicate(fname: str, op: str, value: str) -> Optional[Callable]:
     """Return ``lambda row: <bool ReQL>`` for one text filter, or None if the filter is a no-op."""
     value = value.strip('*') if op != 'eq' else value
@@ -148,6 +162,11 @@ def text_predicate(fname: str, op: str, value: str) -> Optional[Callable]:
         values = [v.strip() for v in value.split(',')] if fname in LIST_EQ_FIELDS else [value]
         values = [v for v in values if v != ''] or ['']
         pattern = '(?i)^(?:' + '|'.join(escape_re2(v) for v in values) + ')$'
+        if fname == 'mail_to' and value != '':
+            # several recipients: mail_to is a JSON-encoded list (strings or {mail_to, mail_to_alias})
+            in_list = r'(?i)^\[.*"' + escape_re2(value) + '"'
+            return lambda row: candidates(fname, row).contains(lambda s: s.match(pattern)) \
+                | _s(row['mail_to']).match(in_list).ne(None)
         return lambda row: candidates(fname, row).contains(lambda s: s.match(pattern))
     if value == '':
         return None
@@ -215,8 +234,12 @@ def parse_filters(args, ignore: Iterable[str] = ()) -> Filters:
                 else:
                     rng[1] = dt if rng[1] is None or dt < rng[1] else rng[1]
             continue
+        if fname in BOOL_FIELDS and op in ('', 'eq'):
+            flt.predicates.extend(multiple_predicate(v) for v in values)
+            continue
         if fname not in TEXT_FIELDS or op not in TEXT_OPS:
-            raise FilterError(f'Unknown filter {key!r}. Allowed fields: {", ".join(TEXT_FIELDS + DATE_FIELDS)}.')
+            raise FilterError(f'Unknown filter {key!r}. Allowed fields: '
+                              f'{", ".join(TEXT_FIELDS + BOOL_FIELDS + DATE_FIELDS)}.')
         if op == '' and negate_plain:
             op = 'not'
         if fname == 'log_lines':

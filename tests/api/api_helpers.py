@@ -44,7 +44,8 @@ FIXTURE_DOCS = [
         'id': 'filterek08:25CF61E7BCF', 'queue_id': '25CF61E7BCF', 'host': 'filterek08',
         'timestamp': ts('2026-10-27T08:00:00+00:00'),
         'first_attempt': ts('2026-10-27T08:00:00+00:00'), 'last_attempt': ts('2026-10-27T08:30:00+00:00'),
-        'mail_from': 'dms@example.com', 'mail_to': 'erin@example.com', 'mail_to_alias': {},
+        'mail_from': 'dms@example.com', 'mail_to': '["erin@example.com", "frank@example.com"]', 'mail_to_alias': {},
+        'multiple': True,
         'recipients': [
             {'to': 'erin@example.com', 'orig_to': 'info@example.com', 'status': {'code': 'sent', 'message': 'ok'},
              'relay': {'host': 'mx1.example.com', 'ip': '203.0.113.5', 'port': 25}, 'dsn': '2.0.0', 'delay': 1.9},
@@ -52,7 +53,8 @@ FIXTURE_DOCS = [
              'relay': {'host': 'mx2.example.com', 'ip': '203.0.113.6', 'port': 25}, 'dsn': '4.4.1', 'delay': 30.0},
         ],
         'subject': 'axb test', 'size': 40, 'message_id': '<m3@example.com>',
-        'status': {'code': 'deferred', 'message': 'timeout'},
+        # 2.0 semantics: worst recipient delivery, message prefixed with the recipient count
+        'status': {'code': 'deferred', 'message': '2 recipients: 1 sent, 1 deferred (timeout)'},
         'relay': {'host': 'mx2.example.com', 'ip': '203.0.113.6', 'port': 25},
         'client': {'host': 'unknown', 'ip': '192.168.140.50'},
         'sasl_method': 'login', 'sasl_username': 'dms@example.com', 'service': 'submission',
