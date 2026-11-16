@@ -19,9 +19,8 @@ from collections import namedtuple
 from typing import List, Dict
 
 import pytz
-import json
 
-from os import getenv as env, path as path, listdir as listdir
+from os import getenv as env, path as path
 from dotenv import load_dotenv
 from privex.helpers import env_bool, env_csv, env_int
 
@@ -53,6 +52,26 @@ ldap_searchbase = env('LDAP_SEARCHBASE' ,'')
 ldap_searchfilter = env('LDAP_SEARCHFILTER', '(%s=%s)')
 ldap_username_attr = env('LDAP_USERNAME_ATTR', '')
 ldap_username_domain_part = env('LDAP_USERNAME_DOMAIN_PART', '')
+
+# --- Web auth / session / secret key (2.0) ---------------------------------------------------
+# SECRET_KEY values that must never be used: when SECRET_KEY is empty or one of these, a random
+# key is generated once and persisted in ``<instance_path>/secret_key`` (see mlp/security.py).
+insecure_secret_keys = ('', 'SetThis!InYourEnv', 'ChangeMe', 'changeme', 'secret')
+instance_path = env('INSTANCE_PATH', path.join(path.dirname(path.dirname(path.abspath(__file__))), 'instance'))
+session_cookie_secure = env_bool('SESSION_COOKIE_SECURE', False)
+session_lifetime_hours = env_int('SESSION_LIFETIME_HOURS', 12)
+# Login throttling (in memory, per worker): failures allowed per (IP, login) and per IP in the window.
+login_max_failures = env_int('LOGIN_MAX_FAILURES', 5)
+login_max_failures_ip = env_int('LOGIN_MAX_FAILURES_IP', 50)
+login_throttle_window = env_int('LOGIN_THROTTLE_WINDOW', 900)
+# Optional RethinkDB account (RethinkDB's default "admin" user has no password).
+rethink_user = env('RETHINK_USER', '')
+rethink_password = env('RETHINK_PASSWORD', '')
+# Client-side timeout (seconds) of one API query; 0 disables it.
+query_timeout = env_int('QUERY_TIMEOUT', 60)
+# Network / operation timeout (seconds) for LDAP calls.
+ldap_timeout = env_int('LDAP_TIMEOUT', 10)
+# ----------------------------------------------------------------------------------------------
 
 mail_domain = env('MAIL_DOMAIN', '')
 
@@ -112,17 +131,3 @@ _ERRORS: List[AppError] = [
 ]
 ERRORS: Dict[str, AppError] = {err.code: err for err in _ERRORS}
 DEFAULT_ERR: AppError = ERRORS['UNKNOWN_ERROR']
-
-# get all locale lang files
-basedir = path.abspath(path.dirname(__file__))
-lang_files = listdir(path.join(basedir,'static/locales/'))
-new_lang_files_json = {}
-
-for lang in lang_files:
-    f = open(path.join(basedir,'static/locales/')+lang)
-    data = json.load(f)
-    before, sep, after = lang.partition('.')
-    lang = before
-    new_lang_files_json[lang] = data['locale_lang']
-
-lang_files = json.dumps(new_lang_files_json)
