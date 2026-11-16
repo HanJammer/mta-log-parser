@@ -1,18 +1,19 @@
 # compose file for deploy
-version: '3.9'
-
 services:
   mlp:
     image: drlight17/mta-log-parser:latest
     container_name: mta-log-parser
-    command: /app/run.sh ${COMMAND}
+    command: /app/run.sh ${COMMAND:-prod}
     ports:
       - ${PORT}:${PORT}
     restart: always
+    # the app runs as uid 1000; give it the group that may read the mail log (4 = adm on Debian/Ubuntu)
+    group_add:
+      - "${MAIL_LOG_GID:-4}"
     volumes:
-      - ./.env:/app/.env
-      - /tmp:/tmp
-      - ${MAIL_LOG_PATH}:${MAIL_LOG_PATH}
+      - ./.env:/app/.env:ro
+      - mlp_instance:/app/instance
+      - ${MAIL_LOG_PATH}:${MAIL_LOG_PATH}:ro
     depends_on:
       - rethinkdb
     networks:
@@ -22,12 +23,17 @@ services:
     image: rethinkdb:2.4
     container_name: rethinkdb
     ports:
-      - ${RETHINK_EXP_GUI_PORT}:8080
+      # admin GUI only on the host's loopback interface (use an SSH tunnel to reach it remotely)
+      - 127.0.0.1:${RETHINK_EXP_GUI_PORT:-8080}:8080
     restart: always
     volumes:
-      - ./:/data
+      # same host folder as 1.x (./rethinkdb_data), but without exposing the rest of the directory
+      - ./rethinkdb_data:/data/rethinkdb_data
     networks:
       - internal
+
+volumes:
+  mlp_instance:
 
 networks:
   internal:
