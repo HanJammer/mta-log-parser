@@ -119,7 +119,35 @@ GET `/api/facets` — values for filter pickers: `{hosts: ["filterek08", …], s
 - **new** GET `/api/stats?by_host=1&…filters` → `[{host, count, sent, deferred, bounced, reject}]`
 - **new** GET `/api/stats?timeline=1&bucket=hour|day&…filters` → `[{t, sent, deferred, bounced, reject, other}]`
 
-GET `/api/process_check` → `{processing: bool}` (unchanged).
+GET `/api/process_check` → `{processing: bool}` (unchanged, no login needed).
+
+### Implementation notes (backend, binding for clients)
+
+- Timestamps are always returned in UTC (`…+00:00`), whatever offset was stored.
+- `__eq` is a case-insensitive exact match. A plain/`__not` filter with empty text is ignored; `<field>__eq=`
+  matches documents where the field is empty or missing. `mail_to__eq` also matches an address inside the
+  JSON-encoded `mail_to` list of multi-recipient messages.
+- `multiple=true|false` (or `multiple__eq=…`): more than one recipient — the 2.0 `multiple` field, or legacy
+  documents with status `multiple`. Other values / operators → `400`.
+- `order` must be one of `id, queue_id, host, timestamp, first_attempt, last_attempt, mail_from, mail_to,
+  subject, size, service` (all indexed); anything else → `400 INVALID_ORDER`. Non-integer `limit`/`page`/`offset` → `400`.
+- `log_lines` needs a time window (`timestamp__gt` or another date filter) → otherwise `400 TIME_WINDOW_REQUIRED`.
+- Stats: optional `limit` (top lists, default 10, max 100); `timeline` accepts `tz=+02:00` (bucket boundaries in
+  that offset, `t` carries the offset). `top_relays` counts per message the distinct `recipients[].relay`
+  (`host[ip]:port`), falling back to the legacy `relay`. `top_recipients` counts `recipients[].to` (legacy: `mail_to`,
+  incl. JSON lists); aliases are no longer counted separately.
+- `GET /api/session` without login: `config` holds only `mail_domain`; `version`, `auth_mode`, `needs_setup` are
+  top-level.
+- Error codes: `UNAUTHORIZED` 401, `INVALID_CREDENTIALS` 401, `TOO_MANY_ATTEMPTS` 429 (+`Retry-After`),
+  `CSRF_FAILED` 403, `INVALID_FILTER`/`INVALID_DATE`/`INVALID_ORDER`/`INVALID_PARAMETER`/`INVALID_BODY`/
+  `INVALID_ACCOUNT`/`LOCAL_AUTH_ONLY`/`INVALID_STATS_MODE`/`RESULT_TOO_LARGE` 400, `NOT_FOUND` 404,
+  `USER_EXISTS`/`ALREADY_SET_UP`/`LAST_ACCOUNT` 409, `QUERY_TIMEOUT` 504, `DB_UNAVAILABLE` 503.
+- Every response has `Content-Security-Policy: default-src 'self'; img-src 'self' data:; style-src 'self'
+  'unsafe-inline'; script-src 'self'; connect-src 'self'; object-src 'none'; frame-ancestors 'none'; …` — the SPA
+  must not rely on inline scripts or third-party origins (fonts, CDNs).
+- SPA: `index.html` is served for `PATH_PREFIX/` and every non-API path with `__MLP_PREFIX__` replaced by the prefix
+  and `<meta name="mlp-prefix">` injected before `</head>` (`Cache-Control: no-cache`); files under
+  `PATH_PREFIX/static/app/assets/` get `max-age=31536000, immutable`.
 
 ## Web UI
 

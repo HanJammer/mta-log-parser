@@ -72,13 +72,13 @@ cd "$DIR"
 
 case "$1" in
     dev*)
-        QUART_APP=wsgi QUART_ENV=development ./manage.py runserver --host "${HOST}" --port "${PORT}"
+        QUART_APP=wsgi QUART_ENV=development python3 manage.py runserver --host "${HOST}" --port "${PORT}"
         ;;
     ''|prod*)
         hypercorn -b "${HOST}:${PORT}" -w "$GU_WORKERS" wsgi
         ;;
     cron|import|parse*)
-        ./manage.py parse
+        python3 manage.py parse
         ;;
     *)
         echo "Runner script for MTA Log Parser"

@@ -72,13 +72,21 @@ crontab -e
 ```
 GUI access
 ========
-Rethinkdb web gui is available on the port 8080 (you may change expose port in .env).
+Rethinkdb web gui is available on the port 8080 of the host's loopback interface only (`127.0.0.1`, you may change
+the port in .env); use an SSH tunnel to reach it from another machine.
 
 Web GUI will be available on the port and path you specified in .env. During the first GUI open you will be promted to create the first user account.
 
 Then to control user account use the corresponding account control button in the GUI after successful login.
+The last user account cannot be deleted.
 
-If the last user account will be deleted you will be logged out to the login screen.
+Docker notes (2.0)
+========
+- The container runs as an unprivileged user (uid 1000). The mail log is mounted read-only; give the container the
+  group that may read it with `MAIL_LOG_GID` in .env (default 4 = `adm` on Debian/Ubuntu).
+- RethinkDB data stays in `./rethinkdb_data` (only that folder is mounted into the database container).
+- If `SECRET_KEY` is not set, a random key is generated once and kept in the `mlp_instance` volume.
+- Behind HTTPS set `SESSION_COOKIE_SECURE=true`.
 
 LDAP authentication
 ========
@@ -101,7 +109,7 @@ Install in your system (not recommended as I provide **no support** for this typ
 **Pre-requirements**
 
  - [RethinkDB](https://rethinkdb.com/) (for storing the queryable log data)
- - Python 3.8 MINIMUM (will not work on earlier versions)
+ - Python 3.11 MINIMUM (3.12 recommended; will not work on earlier versions)
  - Pipenv (`python3 -m pip install pipenv`) - for creating a virtualenv + installing dependencies
 
 

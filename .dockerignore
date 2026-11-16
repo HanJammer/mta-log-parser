@@ -1,16 +1,13 @@
-.env
-*.log
-venv/
-*.txt
-Dockerfile
-*.bak
-*.service
-*.yaml
-*.JPG
-build
-build/*
-rethinkdb_data
-rethinkdb_data/*
-*.crt
-*.pem
-*.cert
+# Allowlist: only what the image needs is sent to the Docker build context.
+# Never allow references/, .git, .venv, .claude, docs/, web/, tests/, .env or instance/.
+*
+!mlp
+!Pipfile
+!Pipfile.lock
+!run.sh
+!manage.py
+!wsgi.py
+!LICENSE.txt
+!AGPL-3.0.txt
+**/__pycache__
+**/*.pyc
