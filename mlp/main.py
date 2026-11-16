@@ -17,6 +17,7 @@ Copyright::
 Log importer: reads the configured log files, groups lines into messages and saves them into RethinkDB.
 """
 import base64
+import fnmatch
 from email.header import decode_header, make_header
 import glob
 import gzip
@@ -44,7 +45,7 @@ log = logging.getLogger(__name__)
 
 # !!! change version upon update !!!
 global VERSION
-VERSION = "2.0.0"
+VERSION = "2.1.0"
 
 lockfile = settings.lock_file
 """Absolute path of the lock file that exists while the importer runs (read by the web UI)"""
@@ -515,6 +516,11 @@ def build_document(key: str, msg: PostfixMessage, multiple_recipients: dict, con
     except Exception:
         m['subject'] = m.get('subject')
 
+    if settings.decode_srs:
+        original = decode_srs(m.get('mail_from'))
+        if original:
+            m['srs_from'] = m['mail_from']
+            m['mail_from'] = original
     if _domain(m.get('mail_from')) in settings.ignore_domains or _domain(m.get('mail_to')) in settings.ignore_domains:
         return None
     recipients = [r for r in (m.get('recipients') or []) if r.get('to')]
@@ -527,6 +533,41 @@ def build_document(key: str, msg: PostfixMessage, multiple_recipients: dict, con
         return m
     _aggregate_recipients(m, recipients, multiple_recipients.get(key))
     return m
+
+
+def _srs0_tail(tail: str) -> Optional[str]:
+    """``HHH=TT=domain=local`` (the part of an SRS0 address after ``SRS0=``) -> ``local@domain``."""
+    parts = tail.split('=', 3)
+    if len(parts) != 4 or not parts[2] or not parts[3]:
+        return None
+    return f'{parts[3]}@{parts[2]}'
+
+
+def decode_srs(addr) -> Optional[str]:
+    """
+    Original sender of a Sender Rewriting Scheme address, or None if ``addr`` is not one.
+
+    ``SRS0=HHH=TT=example.com=john@srs.forwarder.net`` -> ``john@example.com``;
+    ``SRS1=HHH=hop.net==HHH=TT=example.com=john@srs.forwarder.net`` -> ``john@example.com``.
+    """
+    if not addr or len(addr) < 6 or '@' not in addr:
+        return None
+    tag, sep = addr[:4].upper(), addr[4]
+    if tag not in ('SRS0', 'SRS1') or sep not in '=+-':
+        return None
+    body = addr[5:].rsplit('@', 1)[0]
+    if tag == 'SRS0':
+        return _srs0_tail(body)
+    parts = body.split('=', 2)       # hash, first forwarder, <separator>SRS0 tail
+    if len(parts) != 3 or not parts[2] or parts[2][0] not in '=+-':
+        return None
+    return _srs0_tail(parts[2][1:])
+
+
+def is_hidden_recipient(addr: str) -> bool:
+    """``HIDDEN_RECIPIENTS``: address or shell pattern, case-insensitive."""
+    a = (addr or '').lower()
+    return any(fnmatch.fnmatchcase(a, p) for p in settings.hidden_recipients)
 
 
 # Worst first: the message status is the status of its worst recipient delivery.
@@ -551,7 +592,20 @@ def _aggregate_recipients(m: dict, recipients: list, legacy_list: list = None):
     worst delivery (bounced > reject > deferred > sent) instead of the legacy catch-all ``multiple`` (set
     ``LEGACY_MULTIPLE_STATUS=true`` to keep the old behaviour); ``multiple`` is then a separate boolean field.
     The message ``relay`` prefers a network relay over local/LMTP hand-offs.
+    Recipients matching ``HIDDEN_RECIPIENTS`` are flagged ``hidden`` and left out, unless no other recipient is left.
     """
+    hidden = False
+    hidden_failed = []
+    if settings.hidden_recipients:
+        for r in recipients:
+            if is_hidden_recipient(r['to']):
+                r['hidden'] = hidden = True
+        visible = [r for r in recipients if not r.get('hidden')]
+        if visible:
+            hidden_failed = [r for r in recipients if r.get('hidden') and _rcpt_rank(r) > 1]
+            recipients = visible
+        else:
+            hidden = False
     worst = max(recipients, key=_rcpt_rank)
     rank = _rcpt_rank(worst)
     code = (worst.get('status') or {}).get('code')
@@ -587,9 +641,14 @@ def _aggregate_recipients(m: dict, recipients: list, legacy_list: list = None):
             summary = ', '.join(f'{v} {k}' for k, v in sorted(counts.items(), key=lambda kv: -kv[1]))
             m['status']['message'] = f'{len(addresses)} recipients: {summary}. ' + (m['status'].get('message') or '')
         # legacy JSON list (aliases kept when the legacy detection found them)
-        m['mail_to'] = json.dumps(legacy_list if legacy_list and len(legacy_list) >= len(addresses) else addresses)
+        m['mail_to'] = json.dumps(legacy_list if legacy_list and not hidden and len(legacy_list) >= len(addresses) else addresses)
     else:
         m['mail_to'] = addresses[0]
+    if hidden_failed:
+        # a failed hidden delivery (e.g. the archive copy) does not change the status, but must not go unnoticed
+        notes = '; '.join(f"{r['to']}: {(r.get('status') or {}).get('code') or 'unknown'}" for r in hidden_failed)
+        msg = m['status'].get('message') or ''
+        m['status']['message'] = f'{msg} [hidden recipient {notes}]'.strip()
 
 
 def build_documents(import_output: dict, convert_time=False) -> List[dict]:

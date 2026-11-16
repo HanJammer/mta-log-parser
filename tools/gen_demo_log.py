@@ -105,15 +105,22 @@ def message(w, rnd, ts, host, n):
 
     subject = rnd.choice(SUBJECTS).format(n=rnd.randint(100, 9999), pct=rnd.randint(85, 99))
     cp = pid()
+    env_from = sender
+    if kind == 'inbound' and rnd.random() < 0.3:
+        # forwarded mail: postsrsd rewrites the envelope sender (Sender Rewriting Scheme)
+        local, dom = sender.split('@')
+        h = ''.join(rnd.choice('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789') for _ in range(4))
+        env_from = f'SRS0={h}={rnd.choice("ABCDEFGHIJ")}{rnd.choice("KLMNOPQRST")}={dom}={local}@srs.example.com'
+        w.add(step(), host, f'postsrsd[{pid()}]', f'srs_forward: <{sender}> rewritten as <{env_from}>')
     w.add(step(), host, f'postfix/cleanup[{cp}]',
-          f'{q}: warning: header Subject: {subject} from localhost[127.0.0.1]; from=<{sender}> to=<{rcpts[0]}> proto=ESMTP')
+          f'{q}: warning: header Subject: {subject} from localhost[127.0.0.1]; from=<{env_from}> to=<{rcpts[0]}> proto=ESMTP')
     w.add(step(), host, f'postfix/cleanup[{cp}]', f'{q}: message-id=<{q.lower()}.{n}@{sender.split("@")[1]}>')
     if sender.split('@')[1] in LOCAL_DOMAINS:
         w.add(step(), host, f'opendkim[{pid()}]', f'{q}: DKIM-Signature field added (s=default, d={sender.split("@")[1]})')
     size = rnd.choice([rnd.randint(900, 9000), rnd.randint(9000, 90000), rnd.randint(90000, 4000000)])
     all_rcpts = rcpts + [ARCHIVE]
     qm = 2391 if host == 'mx01' else 3120
-    w.add(step(), host, f'postfix/qmgr[{qm}]', f'{q}: from=<{sender}>, size={size}, nrcpt={len(all_rcpts)} (queue active)')
+    w.add(step(), host, f'postfix/qmgr[{qm}]', f'{q}: from=<{env_from}>, size={size}, nrcpt={len(all_rcpts)} (queue active)')
     start = t
 
     for r in all_rcpts:

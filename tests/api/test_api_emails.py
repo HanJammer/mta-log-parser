@@ -99,6 +99,16 @@ async def test_contains_not_eq(authed):
     assert await ids(authed, 'queue_id__eq=25cf61e7bcf') == {'filterek08:25CF61E7BCF'}
 
 
+async def test_sender_filter_matches_srs_address(authed):
+    # mail_from holds the decoded original sender, srs_from the rewritten envelope sender
+    assert await ids(authed, 'mail_from=carol@example.net') == {'BBB222'}
+    assert await ids(authed, 'mail_from=srs.forwarder') == {'BBB222'}
+    assert await ids(authed, 'mail_from__eq=SRS0=hhhh=TT=example.net=carol@srs.forwarder.example') == {'BBB222'}
+    assert await ids(authed, 'mail_from__not=srs.forwarder') == ALL_IDS - {'BBB222'}
+    # documents without srs_from never match an empty sender
+    assert await ids(authed, 'mail_from__eq=') == set()
+
+
 async def test_filters_are_anded_and_repeatable(authed):
     assert await ids(authed, 'mail_from=alice&host=filterek09') == {'filterek09:99AA'}
     assert await ids(authed, [('subject', 'a'), ('subject', 'test')]) == {'filterek08:25CF61E7BCF'}

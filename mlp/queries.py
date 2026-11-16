@@ -135,6 +135,10 @@ def candidates(fname: str, row):
         return r.expr([_s(row['mail_to'])]).union(
             r.branch(alias.type_of().eq('OBJECT'), alias.values().map(lambda v: _s(v)), [])
         ).union(_recipients(row).concat_map(lambda rc: [_s(rc['to']), _s(rc['orig_to'])]))
+    if fname == 'mail_from':
+        # the original sender and, for SRS-rewritten senders, the rewritten address
+        srs = _s(row['srs_from'])
+        return r.expr([_s(row['mail_from'])]).union(r.branch(srs.ne(''), [srs], []))
     if fname == 'log_lines':
         return _arr(row['lines']).map(lambda line: _s(line['message']))
     if '.' in fname:

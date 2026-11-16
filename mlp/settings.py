@@ -93,6 +93,17 @@ mail_host_name = env('MAIL_HOST_NAME', '')
 legacy_multiple_status = env_bool('LEGACY_MULTIPLE_STATUS', False)
 """If True, messages with several recipients get the 1.x catch-all status ``multiple`` instead of their worst delivery status"""
 
+hidden_recipients = [p.strip().lower() for p in env_csv('HIDDEN_RECIPIENTS', []) if p.strip()]
+"""
+Recipients the server adds to (nearly) every message, e.g. an ``always_bcc`` archive copy: addresses or shell patterns
+(``backup@archive.local``, ``*@archive.local``), case-insensitive. Their deliveries stay in ``recipients`` (flagged
+``hidden``) but do not count for ``mail_to``, ``multiple``, the message status or the relay - unless a message has no
+other recipient.
+"""
+
+decode_srs = env_bool('DECODE_SRS', True)
+"""Show the original sender of SRS-rewritten envelope senders (``SRS0=...``) in ``mail_from``; the rewritten address is kept in ``srs_from``"""
+
 import_batch_size = max(1, env_int('IMPORT_BATCH_SIZE', 500))
 """Number of messages per RethinkDB ``insert(..., conflict='update')`` call when importing"""
 

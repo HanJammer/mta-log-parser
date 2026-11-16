@@ -1,4 +1,5 @@
 import asyncio
+import copy
 import gzip
 import json
 import os
@@ -14,7 +15,7 @@ from conftest import fixture_path, ROOT
 
 from mlp import settings
 from mlp import main as mlp_main
-from mlp.main import LogImporter, build_document, build_documents, import_log, resolve_log_files, decodev2
+from mlp.main import LogImporter, build_document, build_documents, import_log, resolve_log_files, decodev2, decode_srs
 from mlp.parser import TimestampParser, parse_postfix, parse_legacy, service_from_program, split_syslog
 
 UTC = timezone.utc
@@ -102,6 +103,68 @@ def test_legacy_multiple_status_setting(rfc, monkeypatch):
     assert d['subject'] == 'Quarterly report'
     assert d['nrcpt'] == 2
     assert 'mx1:1A2B3C4D5E6' in out['multiple_recipients_qids']
+
+
+def test_hidden_recipients(rfc, monkeypatch):
+    out, _ = rfc
+    key = 'mx1:25CF61E7BCF'
+    d = build_document(key, out['messages'][key], out['multiple_recipients'])
+    assert d['multiple'] is True and 'hidden' not in d['recipients'][0]
+    monkeypatch.setattr(settings, 'hidden_recipients', ['*@ARCHIVE.example'.lower()])
+    d = build_document(key, out['messages'][key], out['multiple_recipients'])
+    assert d['mail_to'] == 'john.doe@example.com'
+    assert d['multiple'] is False
+    assert d['status']['code'] == 'sent' and not d['status']['message'].startswith('2 recipients')
+    assert d['relay']['ip'] == '52.101.91.156'
+    # the hidden delivery is still stored, flagged
+    assert [(r['to'], bool(r.get('hidden'))) for r in d['recipients']] == [
+        ('backup@archive.example', True), ('john.doe@example.com', False)]
+    # a message with nothing but hidden recipients keeps them
+    monkeypatch.setattr(settings, 'hidden_recipients', ['*'])
+    d = build_document(key, out['messages'][key], out['multiple_recipients'])
+    assert d['multiple'] is True and json.loads(d['mail_to']) == ['backup@archive.example', 'john.doe@example.com']
+
+
+def test_hidden_recipient_failure_does_not_set_status(rfc, monkeypatch):
+    out, _ = rfc
+    key = 'mx1:25CF61E7BCF'
+    msg = copy.deepcopy(out['messages'][key])
+    msg.recipients[0]['status'] = {'code': 'deferred', 'message': 'archive down'}
+    assert build_document(key, msg, out['multiple_recipients'])['status']['code'] == 'deferred'
+    monkeypatch.setattr(settings, 'hidden_recipients', ['backup@archive.example'])
+    d = build_document(key, msg, out['multiple_recipients'])
+    assert d['status']['code'] == 'sent'
+    # ...but the failure is noted in the status message (searchable with status.message=hidden)
+    assert d['status']['message'].endswith('[hidden recipient backup@archive.example: deferred]')
+    assert d['status']['message'].startswith('(250 2.6.0')
+
+
+@pytest.mark.parametrize('addr, expected', [
+    ('SRS0=55iL=IP=mw-monitoring.example.com=mw@srs.example.net', 'mw@mw-monitoring.example.com'),
+    ('srs0+HHH=TT=example.com=first.last=tag@srs.example.net', 'first.last=tag@example.com'),
+    ('SRS1=X=hop.example.org==HHH=TT=example.com=john@srs.example.net', 'john@example.com'),
+    ('SRS1=X=hop.example.org=+HHH=TT=example.com=john@srs.example.net', 'john@example.com'),
+    ('john@example.com', None),
+    ('SRS0=broken@srs.example.net', None),
+    ('SRS1=X=hop==@srs.example.net', None),
+    ('', None),
+    (None, None),
+])
+def test_decode_srs(addr, expected):
+    assert decode_srs(addr) == expected
+
+
+def test_srs_sender_is_decoded(rfc, monkeypatch):
+    out, _ = rfc
+    key = 'mx1:25CF61E7BCF'
+    msg = copy.deepcopy(out['messages'][key])
+    msg.mail_from = 'SRS0=55iL=IP=example.org=mw@srs.example.com'
+    d = build_document(key, msg, out['multiple_recipients'])
+    assert d['mail_from'] == 'mw@example.org'
+    assert d['srs_from'] == 'SRS0=55iL=IP=example.org=mw@srs.example.com'
+    monkeypatch.setattr(settings, 'decode_srs', False)
+    d = build_document(key, msg, out['multiple_recipients'])
+    assert d['mail_from'] == msg.mail_from and 'srs_from' not in d
 
 
 def test_offset_is_honoured(rfc):

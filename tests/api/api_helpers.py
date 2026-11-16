@@ -33,7 +33,7 @@ FIXTURE_DOCS = [
         'id': 'BBB222', 'queue_id': 'BBB222',
         'timestamp': ts('2026-10-26T07:00:00+00:00'),
         'first_attempt': ts('2026-10-26T07:00:00+00:00'), 'last_attempt': ts('2026-10-26T07:10:00+00:00'),
-        'mail_from': 'carol@example.net',
+        'mail_from': 'carol@example.net', 'srs_from': 'SRS0=hhhh=TT=example.net=carol@srs.forwarder.example',
         'mail_to': '["dave@example.net", "erin@example.com"]', 'mail_to_alias': {},
         'subject': 'Weekly', 'size': 3, 'message_id': '<m2@example.net>',
         'status': {'code': 'multiple', 'message': ''},
