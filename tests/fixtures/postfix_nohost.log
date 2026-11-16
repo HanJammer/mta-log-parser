@@ -1,0 +1,5 @@
+2025-02-15 00:00:03.474 postfix/smtpd[101]: 3C4D5E6F701: client=unknown[192.0.2.77]
+2025-02-15 00:00:03.500 postfix/cleanup[102]: 3C4D5E6F701: message-id=<nohost@example.com>
+2025-02-15 00:00:03.600 postfix/qmgr[103]: 3C4D5E6F701: from=<someone@example.com>, size=1200, nrcpt=1 (queue active)
+2025-02-15 00:00:04.100 postfix/smtp[104]: 3C4D5E6F701: to=<other@example.net>, relay=mx.example.net[198.51.100.30]:25, delay=0.6, delays=0.1/0/0.2/0.3, dsn=2.0.0, status=sent (250 OK)
+2025-02-15 00:00:04.200 postfix/qmgr[103]: 3C4D5E6F701: removed

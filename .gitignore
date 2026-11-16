@@ -18,3 +18,4 @@ references/
 .venv/
 instance/
 node_modules/
+!tests/fixtures/*.log

@@ -1,0 +1,8 @@
+Oct 26 06:28:47 mx3 postfix/smtpd[2201]: connect from mail.example.org[198.51.100.20]
+Oct 26 06:28:47 mx3 postfix/smtpd[2201]: 7D3E21A0F11: client=mail.example.org[198.51.100.20]
+Oct 26 06:28:47 mx3 postfix/cleanup[2202]: 7D3E21A0F11: message-id=<bsd-1@example.org>
+Oct 26 06:28:48 mx3 postfix/qmgr[2203]: 7D3E21A0F11: from=<news@example.org>, size=4096, nrcpt=1 (queue active)
+Oct 26 06:28:48 mx3 postfix/smtpd[2201]: disconnect from mail.example.org[198.51.100.20] ehlo=1 mail=1 rcpt=1 data=1 quit=1 commands=5
+Oct 26 06:28:49 mx3 postfix/local[2204]: 7D3E21A0F11: to=<user@mx3.example.com>, orig_to=<user>, relay=local, delay=1.2, delays=0.5/0.1/0/0.6, dsn=2.0.0, status=sent (delivered to mailbox)
+Oct 26 06:28:49 mx3 postfix/qmgr[2203]: 7D3E21A0F11: removed
+Dec 31 23:59:59 mx3 postfix/pickup[2300]: 9F00A1B2C3D: uid=1000 from=<user>
