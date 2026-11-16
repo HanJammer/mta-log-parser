@@ -568,8 +568,9 @@ def _aggregate_recipients(m: dict, recipients: list, legacy_list: list = None):
     for k in ('dsn', 'delay', 'delays'):
         if primary.get(k) not in (None, ''):
             m[k] = primary[k]
-    if _network_relay(primary):
-        m['relay'] = dict(primary.get('relay'))
+    if rank > 1 or _network_relay(primary):
+        # a failed delivery always shows its own relay (even "none"), never the archive copy that succeeded
+        m['relay'] = dict(primary.get('relay') or {})
     elif net:
         m['relay'] = dict(net[-1].get('relay'))
 

@@ -476,3 +476,17 @@ def test_exchange_unknown_event_and_empty_size():
         assert lm['status']['code'] == 'sent' and lm['size'] == 2.0
     finally:
         settings.mta = old
+
+
+def test_failed_delivery_relay_wins_over_archive_copy():
+    from mlp.main import _aggregate_recipients
+    m = {'status': {'code': 'unknown', 'message': ''}, 'relay': {'host': 'mail.example.com', 'ip': 'private/dovecot-lmtp', 'port': ''}}
+    recipients = [
+        {'to': 'a@example.org', 'status': {'code': 'bounced', 'message': '(Host not found)'},
+         'relay': {'host': 'none', 'ip': '', 'port': ''}, 'dsn': '5.4.4'},
+        {'to': 'archive@example.com', 'status': {'code': 'sent', 'message': '(Saved)'},
+         'relay': {'host': 'mail.example.com', 'ip': 'private/dovecot-lmtp', 'port': ''}, 'dsn': '2.0.0'},
+    ]
+    _aggregate_recipients(m, recipients)
+    assert m['status']['code'] == 'bounced'
+    assert m['relay']['host'] == 'none' and m['dsn'] == '5.4.4'
