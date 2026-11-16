@@ -16,6 +16,7 @@ Copyright::
 
 """
 import asyncio
+from contextvars import ContextVar
 import json
 import logging
 import rethinkdb.ast
@@ -48,10 +49,26 @@ __STORE = {}
 EXTRA_INDEXES = {'sent_mail': ['host', 'service', 'queue_id', 'subject', 'size']}
 
 
+# The connection belongs to the current asyncio context: each web request (one task per request) gets its own
+# connection, closed in ``teardown_request``; tasks started from a context that already has one (``asyncio.gather``
+# in the importer) share it. One shared process-wide connection broke every in-flight query whenever one request
+# was cancelled (client went away, client-side timeout) or failed with a driver error.
+_CONN: ContextVar = ContextVar('mlp_rethink_conn', default=None)
+
+
+async def close_rethink():
+    """Close the connection of the current context (end of a web request, end of an import run)."""
+    cached = _CONN.get()
+    _CONN.set(None)
+    if cached is not None:
+        await _quiet(cached[1].close(noreply_wait=False))
+
+
 def reset_rethink():
-    """Forget the cached connection (e.g. after a connection error) and close it; the next call reconnects."""
-    cached = __STORE.pop('rethink', None)
-    cached_loop = __STORE.pop('rethink_loop', None)
+    """Forget the connection of the current context (e.g. after a connection error) and close it; the next call reconnects."""
+    cached = _CONN.get()
+    _CONN.set(None)
+    cached_loop = cached[3] if cached is not None else None
     if cached is None:
         return
     try:
@@ -88,15 +105,16 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
         >>> r.table('blocks').insert(dict(block_num=1234)).run(conn, array_limit=settings.rethink_arr_limit)
 
 
-    The connection is cached per event loop and re-created when it was closed.
+    The connection is cached per asyncio context (see ``_CONN``) and re-created when it was closed.
 
     :return DB rethink: (Tuple Param 1) - Main RethinkDB database query object :class:`rethinkdb.RethinkDB`
     :return DefaultConnection conn: (Tuple Param 2) - Rethink Connection Object :class:`rethinkdb.net.DefaultConnection`
     """
     loop = asyncio.get_running_loop()
-    if 'rethink' in __STORE:
-        if __STORE.get('rethink_loop') is loop and __STORE['rethink'][1].is_open():
-            return __STORE['rethink']
+    cached = _CONN.get()
+    if cached is not None:
+        if cached[3] is loop and cached[1].is_open():
+            return cached[:3]
         reset_rethink()
 
     # Setup RethinkDB connection
@@ -116,9 +134,8 @@ async def get_rethink() -> Tuple[DB, DefaultConnection, RethinkDB]:
             raise
         __STORE['schema_ready'] = settings.rethink_db
 
-    __STORE['rethink'] = db, conn, r
-    __STORE['rethink_loop'] = loop
-    return __STORE['rethink']
+    _CONN.set((db, conn, r, loop))
+    return db, conn, r
 
 
 async def _ensure_schema(r, conn):

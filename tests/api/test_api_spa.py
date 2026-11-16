@@ -38,7 +38,7 @@ async def test_index_at_root(client, path):
     page = await _page(res)
     assert '<meta name="mlp-prefix" content="">' in page
     assert '__MLP_PREFIX__' not in page
-    assert 'href="/static/images/favicon.ico"' in page
+    assert 'href="/static/app/favicon.svg"' in page and 'src="/static/app/theme-init.js"' in page
     assert page.index('mlp-prefix') < page.index('</head>')
 
 
@@ -49,7 +49,7 @@ async def test_index_with_prefix(make_app, path):
     assert res.status_code == 200
     page = await _page(res)
     assert '<meta name="mlp-prefix" content="/logs">' in page
-    assert 'href="/logs/static/images/favicon.ico"' in page
+    assert 'href="/logs/static/app/favicon.svg"' in page and 'src="/logs/static/app/theme-init.js"' in page
     assert '__MLP_PREFIX__' not in page
 
 

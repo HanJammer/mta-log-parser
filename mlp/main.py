@@ -34,7 +34,7 @@ from typing import Dict, Iterable, List, Optional, Union
 import rethinkdb.query
 
 from mlp import settings
-from mlp.core import get_rethink
+from mlp.core import close_rethink, get_rethink
 from mlp.objects import PostfixLog, PostfixMessage
 from mlp.parser import (
     TimestampParser, parse_message, parse_opendkim, service_from_program, split_syslog, tls_established,
@@ -678,6 +678,7 @@ async def main():
                  totals['inserted'], totals['replaced'], totals['unchanged'], totals['errors'])
         log.info('Finished!')
     finally:
+        await close_rethink()
         if lock_created:
             log.info('Unblocking GUI updates')
             try:

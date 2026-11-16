@@ -25,7 +25,7 @@ from rethinkdb.errors import ReqlAvailabilityError, ReqlDriverError, ReqlError, 
 from werkzeug.exceptions import HTTPException
 
 from mlp import api, settings
-from mlp.core import reset_rethink
+from mlp.core import close_rethink, reset_rethink
 from mlp.exceptions import APIException
 from mlp.queries import FilterError
 from mlp.security import SECURITY_HEADERS, SPA_CSP, LoginThrottle, resolve_secret_key
@@ -75,6 +75,11 @@ def create_app(path_prefix: str = None, secret_key: str = None) -> Quart:
         elif request.path.startswith(prefix + '/api'):
             resp.headers.setdefault('Cache-Control', 'no-store')
         return resp
+
+    @app.teardown_request
+    async def _close_db(exc=None):
+        # every request has its own RethinkDB connection (see mlp.core._CONN)
+        await close_rethink()
 
     @app.errorhandler(FilterError)
     async def _filter_error(exc: FilterError):
