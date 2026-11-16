@@ -1,0 +1,135 @@
+/*
+ * Design tokens. Palette: cool "sorting office" greys, air-mail blue for interaction, air-mail red
+ * only in the brand stripe. Status hues follow the Okabe–Ito colour-blind safe set and are always
+ * paired with a distinct glyph.
+ */
+:root {
+  --font-ui: 'Overpass Variable', 'Overpass', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'Overpass Mono Variable', 'Overpass Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+
+  --fs-xs: 11.5px;
+  --fs-sm: 12.5px;
+  --fs-md: 13.5px;
+  --fs-lg: 15px;
+  --fs-xl: 19px;
+  --fs-2xl: 26px;
+
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 10px;
+
+  --row-h: 30px;
+  --cell-px: 10px;
+
+  --airmail-red: #c8323c;
+  --airmail-blue: #2b4c9b;
+  --stripe: repeating-linear-gradient(
+    -45deg,
+    var(--airmail-red) 0 10px,
+    transparent 10px 15px,
+    var(--airmail-blue) 15px 25px,
+    transparent 25px 30px
+  );
+
+  --shadow-pop: 0 1px 2px rgb(16 24 40 / 0.06), 0 8px 24px rgb(16 24 40 / 0.12);
+  --shadow-drawer: -12px 0 32px rgb(16 24 40 / 0.14);
+}
+
+:root,
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #eceff3;
+  --surface: #ffffff;
+  --surface-2: #f5f7f9;
+  --surface-3: #e9edf1;
+  --ink: #18202b;
+  --ink-2: #445063;
+  --ink-3: #657083;
+  --line: #d5dce4;
+  --line-2: #e6eaef;
+  --accent: #2b4c9b;
+  --accent-hover: #233f82;
+  --accent-ink: #ffffff;
+  --accent-soft: #e5ebf7;
+  --accent-text: #2b4c9b;
+  --danger: #b3261e;
+  --danger-soft: #fbe9e7;
+  --row-hover: #f2f5fa;
+  --row-active: #e5ebf7;
+  --backdrop: rgb(24 32 43 / 0.32);
+  --stripe-gap: #ffffff;
+
+  --st-sent: #0b7a5c;
+  --st-sent-bg: #e1f2ec;
+  --st-sent-mark: #009e73;
+  --st-deferred: #8a5300;
+  --st-deferred-bg: #fbefd6;
+  --st-deferred-mark: #e69f00;
+  --st-bounced: #a94200;
+  --st-bounced-bg: #fbe6da;
+  --st-bounced-mark: #d55e00;
+  --st-reject: #9a3878;
+  --st-reject-bg: #f5e3ee;
+  --st-reject-mark: #cc79a7;
+  --st-multiple: #1c5a93;
+  --st-multiple-bg: #e0ebf6;
+  --st-multiple-mark: #0072b2;
+  --st-unknown: #5a6678;
+  --st-unknown-bg: #eaedf1;
+  --st-unknown-mark: #8792a2;
+  /* chart fill for "other" (unknown + multiple): a dark neutral, distinct from reject's pink */
+  --st-other-mark: #5b6676;
+  --bar: #4a68b3;
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #121820;
+  --surface: #19212b;
+  --surface-2: #1f2834;
+  --surface-3: #27313e;
+  --ink: #e3e8ef;
+  --ink-2: #b4becb;
+  --ink-3: #8e99a8;
+  --line: #2e3a48;
+  --line-2: #26303c;
+  --accent: #8da7e6;
+  --accent-hover: #a7bcef;
+  --accent-ink: #0f1622;
+  --accent-soft: #24324f;
+  --accent-text: #a9bdf0;
+  --danger: #ff8a80;
+  --danger-soft: #3a2224;
+  --row-hover: #1f2937;
+  --row-active: #24324f;
+  --backdrop: rgb(4 8 14 / 0.55);
+  --stripe-gap: #19212b;
+  --shadow-pop: 0 1px 2px rgb(0 0 0 / 0.3), 0 10px 28px rgb(0 0 0 / 0.45);
+  --shadow-drawer: -12px 0 32px rgb(0 0 0 / 0.45);
+
+  --st-sent: #5ccfa8;
+  --st-sent-bg: rgb(0 158 115 / 0.16);
+  --st-sent-mark: #2fae84;
+  --st-deferred: #f4c562;
+  --st-deferred-bg: rgb(230 159 0 / 0.16);
+  --st-deferred-mark: #d9b23a;
+  --st-bounced: #ff9a62;
+  --st-bounced-bg: rgb(213 94 0 / 0.2);
+  --st-bounced-mark: #e2602b;
+  --st-reject: #eb9bcb;
+  --st-reject-bg: rgb(204 121 167 / 0.18);
+  --st-reject-mark: #c584b4;
+  --st-other-mark: #6b7686;
+  --bar: #7f9be0;
+  --st-multiple: #7dbcf2;
+  --st-multiple-bg: rgb(0 114 178 / 0.22);
+  --st-multiple-mark: #3d9ad9;
+  --st-unknown: #a6b0bd;
+  --st-unknown-bg: rgb(135 146 162 / 0.16);
+  --st-unknown-mark: #8792a2;
+}
+
+:root[data-density='comfortable'] {
+  --row-h: 38px;
+  --cell-px: 12px;
+}
